@@ -1,372 +1,366 @@
-const { EmbedBuilder } = require('discord.js');
-const hotPotatoes = require('../data/hotPotatoes');
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 
-const potatoMessages = [
-    "The potato is getting warmer...",
-    "The potato is vibrating...",
-    "The potato smells dangerous...",
-    "The potato is humming softly...",
-    "The potato is glowing faintly...",
-    "The potato is making concerning noises...",
-    "The potato is becoming increasingly angry...",
-    "The potato looks unstable...",
-    "The potato has started ticking...",
-    "Somebody should get rid of that thing..."
+const hotPotatoes = require("../data/hotPotatoes");
+
+const potatoStages = [
+  "🥔 The potato seems harmless.",
+  "🙂 The potato feels slightly warm.",
+  "😐 The potato is warming up.",
+  "😬 The potato is vibrating.",
+  "⚠️ The potato is making strange noises.",
+  "🔥 The potato is getting dangerously hot.",
+  "💣 The potato looks extremely unstable.",
+  "☢️ The potato is moments from disaster.",
 ];
 
-const dangerMessages = [
-    "💥 BOOM!",
-    "☠️ DETONATION DETECTED!",
-    "🚨 CRITICAL FAILURE!",
-    "🔥 POTATO EXPLOSION IMMINENT!",
-    "⚠️ CONTAINMENT FAILURE!",
-    "☢️ REACTOR MELTDOWN DETECTED!",
-    "💣 ARMING SEQUENCE STARTED!",
-    "🚨 CORE INSTABILITY DETECTED!"
-];
+function getPrematureChance(percent) {
+  if (percent > 0.875) return 0;
+  if (percent > 0.75) return 0.0025;
+  if (percent > 0.625) return 0.005;
+  if (percent > 0.5) return 0.01;
+  if (percent > 0.375) return 0.02;
+  if (percent > 0.25) return 0.03;
+  if (percent > 0.125) return 0.04;
 
-
-async function updateBoard(game) {
-
-    if (!game?.statusMessage) return;
-
-    const passes =
-        game.passes.length > 0
-            ? game.passes.map(p => `• ${p}`).join('\n')
-            : 'No passes yet';
-
-    const embed = new EmbedBuilder()
-        .setTitle(`🥔 Hot Potato | Passes: ${game.passCount}`)
-        .addFields(
-            {
-                name: 'Status',
-                value: game.status,
-                inline: false
-            },
-            {
-                name: 'Recent Passes',
-                value: passes,
-                inline: false
-            }
-        )
-        .setFooter({
-            text: 'Use !pass @user to survive'
-        });      
-
-    await game.statusMessage.edit({
-        embeds: [embed]
-    }).catch(() => {});
+  return 0.05;
 }
 
+const dangerMessages = [
+  "💥 BOOM!",
+  "☠️ DETONATION DETECTED!",
+  "🚨 CRITICAL FAILURE!",
+  "🔥 POTATO EXPLOSION IMMINENT!",
+  "⚠️ CONTAINMENT FAILURE!",
+  "☢️ REACTOR MELTDOWN DETECTED!",
+  "💣 ARMING SEQUENCE STARTED!",
+  "🚨 CORE INSTABILITY DETECTED!",
+];
+function createEmbed(game) {
+  return new EmbedBuilder()
+    .setColor("Orange")
+    .setTitle("🥔 Hot Potato")
+    .addFields(
+      {
+        name: "",
+        value: game.status,
+        inline: false,
+      },
+      {
+        name: "",
+        value: game.lastActivity || "Game Started",
+        inline: false,
+      },
+    )
+    .setTimestamp();
+}
+async function updateBoard(game, customStatus = null) {
+  if (game.statusLocked && customStatus === null) return;
+
+  if (game.ended && customStatus === null) return;
+
+  const row = game.ended
+    ? null
+    : new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("pass_potato")
+          .setLabel("Pass Potato")
+          .setEmoji("🥔")
+          .setStyle(ButtonStyle.Primary),
+      );
+
+  const percent = (game.endTime - Date.now()) / game.maxTime;
+
+  let stage;
+
+  if (percent > 0.875) stage = potatoStages[0];
+  else if (percent > 0.75) stage = potatoStages[1];
+  else if (percent > 0.625) stage = potatoStages[2];
+  else if (percent > 0.5) stage = potatoStages[3];
+  else if (percent > 0.375) stage = potatoStages[4];
+  else if (percent > 0.25) stage = potatoStages[5];
+  else if (percent > 0.125) stage = potatoStages[6];
+  else stage = potatoStages[7];
+
+  const displayStatus = customStatus || stage;
+
+  await game.statusMessage
+    .edit({
+      embeds: [
+        createEmbed({
+          ...game,
+          status: displayStatus,
+        }),
+      ],
+      components: [row],
+    })
+    .catch(() => {});
+}
 module.exports = {
-    name: 'hotpotato',
-    aliases: ['pass'],
+  name: "hotpotato",
 
-    async execute(message, args = []) {
+  async execute(message) {
+    const vc = message.member.voice.channel;
 
-        if (args[0]?.toLowerCase() === 'pass') {
-            args.shift();
-        }
+    if (!vc) return message.reply("Join a voice channel first.");
 
-        const vc = message.member.voice.channel;
-        const target = message.mentions.members.first();
+    const players = [...vc.members.values()].filter((m) => !m.user.bot);
 
-        // =========================
-        // PASS
-        // =========================
+    if (players.length < 2) return message.reply("Need at least 2 players.");
 
-        if (target) {
+    if (hotPotatoes.has(vc.id))
+      return message.reply("A potato game is already running!");
 
-            if (!vc)
-                return message.reply('Join a voice channel first.');
+    const holder = players[Math.floor(Math.random() * players.length)];
 
-            const game = hotPotatoes.get(vc.id);
+    const explodeTime = (Math.floor(Math.random() * 61) + 30) * 1000;
 
-            if (!game)
-                return message.reply('No potato game running.');
+    const game = {
+      holderId: holder.id,
+      endTime: Date.now() + explodeTime,
+      maxTime: explodeTime,
+      status: potatoStages[0],
+      lastActivity: "Game Started",
+      statusLocked: false,
+    };
 
-            if (game.holderId !== message.author.id)
-                return message.reply('You do not have the potato!');
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("pass_potato")
+        .setLabel("Pass Potato")
+        .setEmoji("🥔")
+        .setStyle(ButtonStyle.Primary),
+    );
 
-            if (!vc.members.has(target.id))
-                return message.reply('They must be in your VC.');
+    const statusMessage = await message.channel.send({
+      embeds: [createEmbed(game, message.guild)],
+      components: [row],
+    });
 
-            if (target.id === message.author.id)
-                return message.reply('Nice try 😏');
+    game.statusMessage = statusMessage;
 
-            // 5% sudden death
-            if (Math.random() < 0.05) {
+    const holderMessage = await message.channel.send(
+      `🥔 <@${holder.id}> has the potato!`,
+    );
 
-                try {
+    game.holderMessage = holderMessage;
 
-                    await target.voice.setChannel(null);
-                    clearTimeout(game.warningTimeout);
-                    hotPotatoes.delete(vc.id);
-                    await game.holderMessage
-                        ?.delete()
-                        .catch(() => {});                    
+    hotPotatoes.set(vc.id, game);
 
-                    game.status =
-                        `💀 ${target.displayName} was vaporized mid-pass!`;
+    const collector = statusMessage.createMessageComponentCollector({
+      time: explodeTime,
+    });
 
-                    await updateBoard(game);
+    collector.on("collect", async (i) => {
+      const currentGame = hotPotatoes.get(vc.id);
 
-                    clearTimeout(game.warningTimeout);
+      if (!currentGame) return;
 
-                    hotPotatoes.delete(vc.id);
+      if (i.user.id !== currentGame.holderId) {
+        return i.reply({
+          content: "You do not have the potato!",
+          ephemeral: true,
+        });
+      }
 
-                } catch (err) {
-                    console.error(err);
-                }
+      const availablePlayers = [...vc.members.values()].filter(
+        (m) => !m.user.bot && m.id !== currentGame.holderId,
+      );
 
-                return;
-            }
+      if (availablePlayers.length === 0) {
+        return i.reply({
+          content: "Nobody to pass to.",
+          ephemeral: true,
+        });
+      }
 
-            game.passCount++;
+      const target =
+        availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
 
-            game.passes.unshift(
-                `${message.member.displayName} → ${target.displayName}`
-            );
+      const percent = (currentGame.endTime - Date.now()) / currentGame.maxTime;
 
-            game.passes = game.passes.slice(0, 5);
+      const explodeChance = getPrematureChance(percent);
 
-            game.holderId = target.id;
-            await game.holderMessage.edit(
-                `🥔 Holder: <@${target.id}>`
-            );            
-            game.status = '🥔 The potato changes hands...';
+      if (Math.random() < explodeChance) {
+        collector.stop();
 
-            await updateBoard(game);
+        const warning =
+          dangerMessages[Math.floor(Math.random() * dangerMessages.length)];
 
-            return;
-        }
+        await updateBoard(
+          currentGame,
+          `# 💥 MID-PASS DETONATION\nPotato exploded on <@${currentGame.holderId}>`,
+        );
 
-        // =========================
-        // START GAME
-        // =========================
+        await message.channel.send(
+          `${warning}\n💥 THE POTATO DETONATED MID-PASS!`,
+        );
 
-        if (!vc)
-            return message.reply('Join a voice channel first.');
+        currentGame.ended = true;
 
-        const players = [...vc.members.values()]
-            .filter(m => !m.user.bot);
+        const victim = message.guild.members.cache.get(currentGame.holderId);
 
-        if (players.length < 2)
-            return message.reply('Need at least 2 players.');
+        try {
+          if (victim?.voice.channel) await victim.voice.setChannel(null);
+        } catch {}
 
-        if (hotPotatoes.has(vc.id))
-            return message.reply('A potato game is already running!');
+        currentGame.ended = true;
 
-        const holder =
-            players[Math.floor(Math.random() * players.length)];
+        await currentGame.holderMessage.edit(
+          `💀 <@${victim.id}> was vaporized by the potato!`,
+        );
 
-        const explodeTime =
-            (Math.floor(Math.random() * 61) + 30) * 1000;
-
-        const embed = new EmbedBuilder()
-            .setTitle('🥔 Hot Potato | Passes: 0')
-            .addFields(
-                {
-                    name: 'Status',
-                    value: '🥔 The potato seems harmless...',
-                    inline: false
-                },
-                {
-                    name: 'Recent Passes',
-                    value: 'No passes yet',
-                    inline: false
-                }
-            )
-            .setFooter({
-                text: 'Use !pass @user to survive'
-            });
-
-        const statusMessage =
-            await message.channel.send({
-                embeds: [embed]
-            });
-
-        const holderMessage =
-            await message.channel.send(
-                `🥔 Holder: <@${holder.id}>`
-            );
-
-        hotPotatoes.set(vc.id, {
-            holderId: holder.id,
-            holderMessage,
-            endTime: Date.now() + explodeTime,
-            statusMessage,
-            status: 'The potato seems harmless...',
-            passes: [],
-            passCount: 0,
+        await currentGame.statusMessage.edit({
+          components: [],
         });
 
-        const game = hotPotatoes.get(vc.id);
+        hotPotatoes.delete(vc.id);
 
-const scheduleWarning = async () => {
+        return;
+      }
 
-    const currentGame =
-        hotPotatoes.get(vc.id);
+      const currentHolder = message.guild.members.cache.get(
+        currentGame.holderId,
+      );
 
-    if (!currentGame) return;
+      currentGame.lastActivity = `${currentHolder.displayName} passed the 🥔 to ${target.displayName}`;
 
-    // Fake Explosion
-    if (Math.random() < 0.15) {
+      currentGame.holderId = target.id;
 
+      await i.deferUpdate();
+
+      await updateBoard(currentGame);
+
+      await currentGame.holderMessage
+        .edit(`🥔 <@${target.id}> has the potato!`)
+        .catch(() => {});
+    });
+
+    const scheduleWarning = async () => {
+      const currentGame = hotPotatoes.get(vc.id);
+
+      if (!currentGame) return;
+
+      if (Math.random() < 0.15) {
         const fakeText =
-            dangerMessages[
-                Math.floor(
-                    Math.random() *
-                    dangerMessages.length
-                )
-            ];
+          dangerMessages[Math.floor(Math.random() * dangerMessages.length)];
 
-        const fakeMsg =
-            await message.channel.send(fakeText);
+        const fakeMsg = await message.channel.send(fakeText);
+        currentGame.statusLocked = true;
+
+        // Stage 1: warning appears
+        await updateBoard(currentGame, `# ${fakeText}\nSomething is wrong...`);
 
         setTimeout(async () => {
+          // Stage 2: reveal false alarm
+          await updateBoard(currentGame, `# 🚨 FALSE ALARM\n${fakeText}`);
 
-            try {
+          try {
+            await fakeMsg.edit(`${fakeText}\n😏 False alarm.`);
 
-                await fakeMsg.edit(
-                    `${fakeText}\n😏 False alarm.`
-                );
+            setTimeout(async () => {
+              // Stage 3: return to normal status
+              currentGame.statusLocked = false;
 
-                setTimeout(async () => {
-                    await fakeMsg.delete().catch(() => {});
-                }, 2500);
+              await updateBoard(currentGame);
 
-            } catch {}
-
+              await fakeMsg.delete().catch(() => {});
+            }, 2500);
+          } catch {}
         }, 1500);
-
-    } else {
-
-        let newMessage;
-
-        do {
-            newMessage =
-                potatoMessages[
-                    Math.floor(
-                        Math.random() *
-                        potatoMessages.length
-                    )
-                ];
-        }
-        while (
-            newMessage === currentGame.status &&
-            potatoMessages.length > 1
-        );
-
-        currentGame.status = newMessage;
-
+      } else {
         await updateBoard(currentGame);
-    }
+      }
 
-    const nextDelay =
-        Math.floor(Math.random() * 6000) + 4000;
+      const nextDelay = Math.floor(Math.random() * 6000) + 4000;
 
-    currentGame.warningTimeout =
-        setTimeout(
-            scheduleWarning,
-            nextDelay
+      currentGame.warningTimeout = setTimeout(scheduleWarning, nextDelay);
+    };
+
+    game.warningTimeout = setTimeout(
+      scheduleWarning,
+      Math.floor(Math.random() * 6000) + 4000,
+    );
+
+    setTimeout(async () => {
+      const currentGame = hotPotatoes.get(vc.id);
+
+      if (!currentGame) return;
+
+      collector.stop();
+
+      clearTimeout(currentGame.warningTimeout);
+
+      if (Math.random() < 0.01) {
+        await updateBoard(
+          currentGame,
+          "# ☢️ NUCLEAR POTATO DETONATED ☢️\n💀 Everybody died.",
         );
-};
 
-        game.warningTimeout =
-            setTimeout(
-                scheduleWarning,
-                Math.floor(Math.random() * 6000) + 4000
-            );
+        currentGame.ended = true;
 
-        setTimeout(async () => {
+        await currentGame.statusMessage.edit({
+          components: [],
+        });
 
-            const game =
-                hotPotatoes.get(vc.id);
+        for (const member of vc.members.values()) {
+          if (!member.user.bot && member.voice.channel) {
+            try {
+              await member.voice.setChannel(null);
+            } catch {}
+          }
+        }
 
-            if (!game) return;
+        hotPotatoes.delete(vc.id);
 
-            clearTimeout(game.warningTimeout);
+        return;
+      }
 
-            // Nuclear potato
-            if (Math.random() < 0.01) {
+      const victim = vc.members.get(currentGame.holderId);
 
-                game.status =
-                    '☢️ NUCLEAR POTATO ACTIVATED ☢️';
+      if (victim?.voice.channel) {
+        try {
+          const warning =
+            dangerMessages[Math.floor(Math.random() * dangerMessages.length)];
 
-                await updateBoard(game);
+          await updateBoard(
+            currentGame,
+            `# ${warning}\nThe potato can no longer be contained...`,
+          );
 
-                await message.channel.send(
-                    '☢️☢️☢️ NUCLEAR POTATO ACTIVATED ☢️☢️☢️'
-                );
+          await new Promise((r) => setTimeout(r, 1500));
 
-                for (const member of vc.members.values()) {
+          await victim.voice.setChannel(null);
+          currentGame.ended = true;
 
-                    if (
-                        !member.user.bot &&
-                        member.voice.channel
-                    ) {
-                        try {
-                            await member.voice.setChannel(null);
-                        } catch {}
-                    }
-                }
+          await updateBoard(
+            currentGame,
+            `# 💥 POTATO DETONATED\nPotato exploded on <@${victim.id}>`,
+          );
 
-                await game.holderMessage
-                ?.delete()
-                .catch(() => {});
+          await currentGame.holderMessage
+            .edit(`💀 <@${victim.id}> was vaporized by the potato!`)
+            .catch(() => {});
 
-                game.status =
-                    '☢️ Nuclear Potato detonated!';
+          await message.channel.send(
+            `🥔 ${victim} was vaporized by the potato.`,
+          );
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
-                await updateBoard(game);
-                hotPotatoes.delete(vc.id);
-                return;
-            }
+      await statusMessage
+        .edit({
+          components: [],
+        })
+        .catch(() => {});
 
-            const victim =
-                vc.members.get(game.holderId);
-
-            if (victim?.voice.channel) {
-
-                try {
-
-                    const warning =
-                        dangerMessages[
-                            Math.floor(
-                                Math.random() *
-                                dangerMessages.length
-                            )
-                        ];
-
-                    await message.channel.send(warning);
-
-                    await new Promise(r =>
-                        setTimeout(r, 1500)
-                    );
-
-                    await victim.voice.setChannel(null);
-
-                    await game.holderMessage
-                        ?.delete()
-                        .catch(() => {});
-
-                    game.status =
-                        `💥 Potato exploded on ${victim.displayName}!`;
-
-                    await updateBoard(game);
-
-                    await message.channel.send(
-                        `🥔 ${victim} was vaporized by the potato.`
-                    );
-
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-
-            hotPotatoes.delete(vc.id);
-
-        }, explodeTime);
-    }
+      hotPotatoes.delete(vc.id);
+    }, explodeTime);
+  },
 };

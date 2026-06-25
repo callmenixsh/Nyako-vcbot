@@ -12,19 +12,18 @@ module.exports = {
                 {
                     name: '🥔 Hot Potato',
                     value:
-                        '`nya!hotpotato` Start a Hot Potato game\n' +
-                        '`!pass @user` Pass the potato',
+                        '`nya!hotpotato` Start a Hot Potato game\n'
                 },
                 {
                     name: '🎲 VC Roulette',
                     value:
-                        '`nya!roulette` Start a turn-based VC roulette game\n'
+                        '`nya!roulette` Start a turn-based roulette game in the VC\n'
                 },
                 {
                     name: '💨 VC Yeet',
                     value:
-                        '`nya!yeet @user [seconds]` Kick a user after delay\n' +
-                        '`nya!yeetall [seconds]` Kick EVERYONE in VC after delay',
+                        '`nya!yeet @user [x]h[x]m[x]s` Kick a user after delay\n' +
+                        '`nya!yeetall [x]h[x]m[x]s` Kick EVERYONE in VC after delay',
                 },
                 {
                     name: '📖 Help',

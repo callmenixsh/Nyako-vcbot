@@ -20,136 +20,299 @@ module.exports = {
         if (players.length < 2)
             return message.reply('Need at least 2 players.');
 
+        let eliminated = [];
+
         let round = 1;
         let chamber = Math.floor(Math.random() * 6);
         let position = 0;
-        let gameActive = true;
+        let turnIndex = 0;
+        let gameActive = false;
 
-        let turnIndex = 0; // 🔥 FAIR CIRCLE SYSTEM
+        const createGameEmbed = (
+            players,
+            eliminated,
+            currentPlayer,
+            round,
+            position,
+            chamber,
+            text = ''
+        ) => {
+            const chamberVisual = Array.from(
+                { length: 6 },
+                (_, i) => {
+                    if (i < position)
+                        return '🟩';
 
-        const embed = (desc) =>
-            new EmbedBuilder()
-                .setTitle('🎲 VC Roulette')
-                .setDescription(desc)
-                .setColor('Red');
+                    if (i === position)
+                        return '🎯';
+
+                    return '⬛';
+                }
+            ).join(' ');
+
+            const alivePlayers = players.length
+                ? players.map(p =>
+                    p.id === currentPlayer?.id
+                        ? `🔫 ${p.user.username} `
+                        : `❤️ ${p.user.username}`
+                ).join('\n')
+                : 'None';
+
+            const deadPlayers = eliminated.length
+                ? eliminated.map(p => `☠️ ${p}`).join('\n')
+                : 'None';
+
+            return new EmbedBuilder()
+                .setColor('#c1121f')
+                .setTitle('🎲 Russian Roulette')
+                .setAuthor({
+                    name: `Started by ${message.author.tag}`,
+                })
+                .setDescription(
+                    `🎯 Round ${round}\n\n${text}`
+                )
+                .addFields(
+                    {
+                        name: 'Alive',
+                        value: alivePlayers,
+                        inline: true,
+                    },
+                    {
+                        name: 'Eliminated',
+                        value: deadPlayers,
+                        inline: true,
+                    },
+                    {
+                        name: '\u200B',
+                        value: '\u200B',
+                        inline: true,
+                    },
+                    {
+                        name: '🎰 Chamber Progress',
+                        value: `${chamberVisual}\nShot ${Math.min(position + 1, 6)}/6`,
+                        inline: false,
+                    }
+                )
+                .setFooter({
+                    text: `${players.length} player(s) remaining`,
+                })
+                .setTimestamp();
+        };
+
+        const startRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('roulette_start')
+                .setLabel('Start')
+                .setEmoji('▶️')
+                .setStyle(ButtonStyle.Success),
+
+            new ButtonBuilder()
+                .setCustomId('roulette_cancel')
+                .setLabel('Cancel')
+                .setEmoji('❌')
+                .setStyle(ButtonStyle.Danger)
+        );
 
         const gameMsg = await message.channel.send({
-            embeds: [embed('Loading chamber...')],
+            embeds: [
+                createGameEmbed(
+                    players,
+                    eliminated,
+                    null,
+                    round,
+                    position,
+                    chamber,
+                    '-# The revolver is loaded.\nPress **Start** to begin.'
+                ),
+            ],
+            components: [startRow],
         });
 
-        const nextTurn = async () => {
-            if (!gameActive) return;
+        const lobbyCollector =
+            gameMsg.createMessageComponentCollector({
+                time: 30000,
+            });
 
-            players = players.filter(p => p.voice.channel);
+        lobbyCollector.on('collect', async (i) => {
+            if (i.user.id !== message.author.id) {
+                return i.reply({
+                    content: 'Only the host can do that.',
+                    ephemeral: true,
+                });
+            }
 
-            if (players.length <= 1) {
-                gameActive = false;
-                return gameMsg.edit({
+            if (i.customId === 'roulette_cancel') {
+                lobbyCollector.stop();
+
+                return i.update({
                     embeds: [
-                        embed(
-                            `🏁 Winner: **${players[0]?.user.tag || 'Nobody'}**`
+                        createGameEmbed(
+                            players,
+                            eliminated,
+                            null,
+                            round,
+                            position,
+                            chamber,
+                            '❌ Roulette cancelled.'
                         ),
                     ],
                     components: [],
                 });
             }
 
-            // 🔥 CIRCULAR TURN PICK (FAIR)
-            if (turnIndex >= players.length) turnIndex = 0;
+            if (i.customId === 'roulette_start') {
+                lobbyCollector.stop();
+
+                gameActive = true;
+
+                await i.update({
+                    embeds: [
+                        createGameEmbed(
+                            players,
+                            eliminated,
+                            null,
+                            round,
+                            position,
+                            chamber,
+                            '🎲 Spinning the chamber...'
+                        ),
+                    ],
+                    components: [],
+                });
+
+                setTimeout(nextTurn, 2000);
+            }
+        });
+
+        lobbyCollector.on('end', async (_, reason) => {
+            if (reason === 'time' && !gameActive) {
+                await gameMsg.edit({
+                    embeds: [
+                        createGameEmbed(
+                            players,
+                            eliminated,
+                            null,
+                            round,
+                            position,
+                            chamber,
+                            '⌛ Lobby expired.'
+                        ),
+                    ],
+                    components: [],
+                });
+            }
+        });
+
+        const nextTurn = async () => {
+            if (!gameActive) return;
+
+            players = players.filter(
+                p => p.voice.channel
+            );
+
+            if (players.length <= 1) {
+                gameActive = false;
+
+                return gameMsg.edit({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('Gold')
+                            .setTitle('🏆 Tournament Complete')
+                            .setDescription(
+                                `👑 **${players[0]?.user.tag || 'Nobody'}**`
+                            )
+                            .addFields({
+                                name: '-----------------------',
+                                value:
+                                    eliminated.length
+                                        ? eliminated
+                                            .map(player => `💀 ${player}`)
+                                            .join('\n')
+                                        : 'Nobody', 
+                            })
+                            .setTimestamp(),
+                    ],
+                    components: [],
+                });
+            }
+
+            if (turnIndex >= players.length)
+                turnIndex = 0;
+
             const player = players[turnIndex];
             turnIndex++;
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('pull_trigger')
-                    .setLabel('🔫 Pull Trigger')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
             await gameMsg.edit({
                 embeds: [
-                    embed(
-                        `Round **${round}**\n\n👉 ${player.user.tag}'s turn`
+                    createGameEmbed(
+                        players,
+                        eliminated,
+                        player,
+                        round,
+                        position,
+                        chamber,
+                        `📢 **${player.user.tag}'s turn**`
                     ),
                 ],
-                components: [row],
             });
 
-            let acted = false;
-
-            const collector = gameMsg.createMessageComponentCollector({
-                time: 5000,
-            });
-
-            collector.on('collect', async (i) => {
-                if (i.user.id !== player.id) {
-                    return i.reply({
-                        content: 'Not your turn 😏',
-                        ephemeral: true,
-                    });
-                }
-
-                acted = true;
-
-                await i.deferUpdate();
+            setTimeout(async () => {
+                if (!gameActive) return;
 
                 if (position === chamber) {
                     try {
                         await player.voice.setChannel(null);
                     } catch {}
 
-                    players = players.filter((p) => p.id !== player.id);
+                    eliminated.push(player.user.tag);
 
-                    gameActive = false;
+                    players = players.filter(
+                        p => p.id !== player.id
+                    );
 
-                    return gameMsg.edit({
+                    if (turnIndex > players.length)
+                        turnIndex = 0;
+
+                    await gameMsg.edit({
                         embeds: [
-                            embed(
-                                `💥 **BANG!**\n${player.user.tag} was eliminated`
+                            createGameEmbed(
+                                players,
+                                eliminated,
+                                null,
+                                round,
+                                position,
+                                chamber,
+                                `💥 **BANG!**\n${player.user.tag} has been eliminated.`
                             ),
                         ],
-                        components: [],
                     });
+
+                    chamber = Math.floor(
+                        Math.random() * 6
+                    );
+                    position = 0;
+                } else {
+                    await gameMsg.edit({
+                        embeds: [
+                            createGameEmbed(
+                                players,
+                                eliminated,
+                                player,
+                                round,
+                                position + 1,
+                                chamber,
+                                `😮 **Click...**\n${player.user.tag} survived.`
+                            ),
+                        ],
+                    });
+
+                    position++;
                 }
 
-                await gameMsg.edit({
-                    embeds: [
-                        embed(`😮 Click...\n${player.user.tag} survived`),
-                    ],
-                    components: [],
-                });
-
-                position = (position + 1) % 6;
                 round++;
 
                 setTimeout(nextTurn, 2000);
-            });
-
-            collector.on('end', async () => {
-                if (acted || !gameActive) return;
-
-                try {
-                    await player.voice.setChannel(null);
-                } catch {}
-
-                players = players.filter((p) => p.id !== player.id);
-
-                await gameMsg.edit({
-                    embeds: [
-                        embed(
-                            `⏰ ${player.user.tag} hesitated...\n💥 Punishment shot fired`
-                        ),
-                    ],
-                    components: [],
-                });
-
-                position = (position + 1) % 6;
-                round++;
-
-                setTimeout(nextTurn, 5000);
-            });
+            }, 2000);
         };
-
-        nextTurn();
     },
 };
