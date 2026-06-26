@@ -3,7 +3,7 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-} = require('discord.js');
+} = require("discord.js");
 
 function parseTime(input) {
     if (!input) return 10000;
@@ -13,68 +13,167 @@ function parseTime(input) {
 
     let ms = 0;
 
-    const matches = input.matchAll(/(\d+)([smh])/gi);
-
-    for (const match of matches) {
+    for (const match of input.matchAll(/(\d+)([smh])/gi)) {
         const value = parseInt(match[1]);
         const unit = match[2].toLowerCase();
 
-        if (unit === 's') ms += value * 1000;
-        if (unit === 'm') ms += value * 60000;
-        if (unit === 'h') ms += value * 3600000;
+        if (unit === "s") ms += value * 1000;
+        if (unit === "m") ms += value * 60000;
+        if (unit === "h") ms += value * 3600000;
     }
 
     return ms || 10000;
 }
 
 function formatTime(ms) {
-    const totalSeconds = Math.floor(ms / 1000);
+    const s = Math.floor(ms / 1000);
 
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
 
-    const parts = [];
+    const out = [];
 
-    if (hours) parts.push(`${hours}h`);
-    if (minutes) parts.push(`${minutes}m`);
-    if (seconds || parts.length === 0)
-        parts.push(`${seconds}s`);
+    if (h) out.push(`${h}h`);
+    if (m) out.push(`${m}m`);
+    if (sec || !out.length) out.push(`${sec}s`);
 
-    return parts.join(' ');
+    return out.join(" ");
+}
+
+async function scheduleMassAction({
+    message,
+    members,
+    delayMs,
+    title,
+    emoji,
+    completeText,
+    action,
+    cancelId,
+}) {
+    const embed = new EmbedBuilder()
+        .setColor("Orange")
+        .setTitle(`${emoji} ${title} Scheduled`)
+        .setDescription(
+            `👥 **Targets:** ${members.length}\n` +
+            `⏳ **Timer:** ${formatTime(delayMs)}`
+        );
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(cancelId)
+            .setLabel("Cancel")
+            .setEmoji("❌")
+            .setStyle(ButtonStyle.Danger)
+    );
+
+    const msg = await message.channel.send({
+        embeds: [embed],
+        components: [row],
+    });
+
+    let cancelled = false;
+
+    const timeout = setTimeout(async () => {
+        if (cancelled) return;
+
+        for (const member of members) {
+            try {
+                if (!member.voice.channel) continue;
+                await action(member);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        await msg.edit({
+            embeds: [
+                new EmbedBuilder()
+                    .setColor("Red")
+                    .setTitle(`${emoji} ${title} Complete`)
+                    .setDescription(completeText(members.length)),
+            ],
+            components: [],
+        });
+    }, delayMs);
+
+    const collector = msg.createMessageComponentCollector({
+        time: delayMs,
+    });
+
+    collector.on("collect", async (i) => {
+        if (i.user.id !== message.author.id) {
+            return i.reply({
+                content: "Only the command author can cancel this.",
+                ephemeral: true,
+            });
+        }
+
+        cancelled = true;
+        clearTimeout(timeout);
+
+        await i.update({
+            embeds: [
+                new EmbedBuilder()
+                    .setColor("Green")
+                    .setTitle(`✅ ${title} Cancelled`)
+                    .setDescription("🕊️ Everyone has been spared."),
+            ],
+            components: [],
+        });
+
+        collector.stop();
+    });
 }
 
 module.exports = {
-    name: 'vckick',
-    aliases: ['yeet', 'yeetall'],
+    name: "vckick",
+
+    aliases: [
+        "yeet",
+        "yeetall",
+        "muteall",
+        "unmuteall",
+        "deafenall",
+        "undeafenall",
+    ],
 
     async execute(message, args = [], client, invokedName) {
+
         let sub = null;
 
-        if (invokedName === 'yeet' || invokedName === 'yeetall') {
+        const commands = [
+            "yeet",
+            "yeetall",
+            "muteall",
+            "unmuteall",
+            "deafenall",
+            "undeafenall",
+        ];
+
+        if (commands.includes(invokedName))
             sub = invokedName;
-        } else if (
+        else if (
             args[0] &&
-            ['yeet', 'yeetall'].includes(args[0].toLowerCase())
-        ) {
+            commands.includes(args[0].toLowerCase())
+        )
             sub = args.shift().toLowerCase();
-        }
 
-        // ---------------- YEET ----------------
+                    // ---------------- YEET ----------------
 
-        if (sub === 'yeet') {
+        if (sub === "yeet") {
             const member = message.mentions.members.first();
             const delayMs = parseTime(args[1]);
 
             if (!member)
-                return message.reply('Mention a user.');
+                return message.reply("Mention a user.");
 
             if (!member.voice.channel)
-                return message.reply('That user is not in VC.');
+                return message.reply("That user is not in VC.");
 
             const embed = new EmbedBuilder()
-                .setColor('Orange')
-                .setTitle('💨 VC Yeet Scheduled')
+                .setColor("Orange")
+                .setTitle("💨 VC Yeet Scheduled")
                 .setDescription(
                     `👤 **Target:** ${member.user.tag}\n` +
                     `⏳ **Timer:** ${formatTime(delayMs)}`
@@ -82,9 +181,9 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setCustomId('cancel_yeet')
-                    .setLabel('Cancel')
-                    .setEmoji('❌')
+                    .setCustomId("cancel_yeet")
+                    .setLabel("Cancel")
+                    .setEmoji("❌")
                     .setStyle(ButtonStyle.Danger)
             );
 
@@ -108,8 +207,8 @@ module.exports = {
                 await msg.edit({
                     embeds: [
                         new EmbedBuilder()
-                            .setColor('Red')
-                            .setTitle('💨 VC Yeet Complete')
+                            .setColor("Red")
+                            .setTitle("💨 VC Yeet Complete")
                             .setDescription(
                                 `💀 ${member.user.tag} has been disconnected.`
                             ),
@@ -118,16 +217,14 @@ module.exports = {
                 });
             }, delayMs);
 
-            const collector =
-                msg.createMessageComponentCollector({
-                    time: delayMs,
-                });
+            const collector = msg.createMessageComponentCollector({
+                time: delayMs,
+            });
 
-            collector.on('collect', async (i) => {
+            collector.on("collect", async (i) => {
                 if (i.user.id !== message.author.id) {
                     return i.reply({
-                        content:
-                            'Only the command author can cancel this.',
+                        content: "Only the command author can cancel this.",
                         ephemeral: true,
                     });
                 }
@@ -138,8 +235,8 @@ module.exports = {
                 await i.update({
                     embeds: [
                         new EmbedBuilder()
-                            .setColor('Green')
-                            .setTitle('✅ VC Yeet Cancelled')
+                            .setColor("Green")
+                            .setTitle("✅ VC Yeet Cancelled")
                             .setDescription(
                                 `🕊️ ${member.user.tag} has been spared.`
                             ),
@@ -153,111 +250,92 @@ module.exports = {
             return;
         }
 
-        // ---------------- YEET ALL ----------------
+        // ---------------- MASS COMMANDS ----------------
 
-        if (sub === 'yeetall') {
-            const delayMs = parseTime(args[0]);
+        const massActions = {
+            yeetall: {
+                title: "Mass VC Yeet",
+                emoji: "💨",
+                complete: (n) =>
+                    `💀 ${n} users were disconnected.`,
+                action: (m) => m.voice.setChannel(null),
+            },
+
+            muteall: {
+                title: "Mass VC Mute",
+                emoji: "🔕",
+                complete: (n) =>
+                    `🔕 ${n} users were server muted.`,
+                action: (m) => m.voice.setMute(true),
+            },
+
+            unmuteall: {
+                title: "Mass VC Unmute",
+                emoji: "🔔",
+                complete: (n) =>
+                    `🔔 ${n} users were server unmuted.`,
+                action: (m) => m.voice.setMute(false),
+            },
+
+            deafenall: {
+                title: "Mass VC Deafen",
+                emoji: "🔇",
+                complete: (n) =>
+                    `🔇 ${n} users were server deafened.`,
+                action: (m) => m.voice.setDeaf(true),
+            },
+
+            undeafenall: {
+                title: "Mass VC Undeafen",
+                emoji: "🔊",
+                complete: (n) =>
+                    `🔊 ${n} users were server undeafened.`,
+                action: (m) => m.voice.setDeaf(false),
+            },
+        };
+
+        if (massActions[sub]) {
 
             const vc = message.member.voice.channel;
 
             if (!vc)
                 return message.reply(
-                    'Join a voice channel first.'
+                    "Join a voice channel first."
                 );
 
-            const membersToKick = [...vc.members.values()]
-                .filter((m) => !m.user.bot);
+            const members = [...vc.members.values()]
+                .filter(m => !m.user.bot);
 
-            if (!membersToKick.length)
+            if (!members.length)
                 return message.reply(
-                    'No members to disconnect.'
+                    "No members found."
                 );
 
-            const embed = new EmbedBuilder()
-                .setColor('Orange')
-                .setTitle('💨 Mass VC Yeet Scheduled')
-                .setDescription(
-                    `👥 **Targets:** ${membersToKick.length}\n` +
-                    `⏳ **Timer:** ${formatTime(delayMs)}`
-                );
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('cancel_yeetall')
-                    .setLabel('Cancel')
-                    .setEmoji('❌')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-            const msg = await message.channel.send({
-                embeds: [embed],
-                components: [row],
-            });
-
-            let cancelled = false;
-
-            const timeout = setTimeout(async () => {
-                if (cancelled) return;
-
-                for (const m of membersToKick) {
-                    try {
-                        if (m.voice.channel)
-                            await m.voice.setChannel(null);
-                    } catch (err) {
-                        console.error(err);
-                    }
-                }
-
-                await msg.edit({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor('Red')
-                            .setTitle('💨 Mass VC Yeet Complete')
-                            .setDescription(
-                                `💀 ${membersToKick.length} users were disconnected.`
-                            ),
-                    ],
-                    components: [],
-                });
-            }, delayMs);
-
-            const collector =
-                msg.createMessageComponentCollector({
-                    time: delayMs,
-                });
-
-            collector.on('collect', async (i) => {
-                if (i.user.id !== message.author.id) {
-                    return i.reply({
-                        content:
-                            'Only the command author can cancel this.',
-                        ephemeral: true,
-                    });
-                }
-
-                cancelled = true;
-                clearTimeout(timeout);
-
-                await i.update({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor('Green')
-                            .setTitle('✅ Mass VC Yeet Cancelled')
-                            .setDescription(
-                                '🕊️ Everyone has been spared.'
-                            ),
-                    ],
-                    components: [],
-                });
-
-                collector.stop();
+            await scheduleMassAction({
+                message,
+                members,
+                delayMs: parseTime(args[0]),
+                title: massActions[sub].title,
+                emoji: massActions[sub].emoji,
+                completeText: massActions[sub].complete,
+                action: massActions[sub].action,
+                cancelId: `cancel_${sub}`,
             });
 
             return;
         }
 
-        return message.reply(
-            'Usage:\n`!yeet @user 30s`\n`!yeet @user 1m30s`\n`!yeetall 2m`'
+                return message.reply(
+            [
+                "Usage:",
+                "`!yeet @user 30s`",
+                "`!yeet @user 1m30s`",
+                "`!yeetall 2m`",
+                "`!muteall 30s`",
+                "`!unmuteall 30s`",
+                "`!deafenall 30s`",
+                "`!undeafenall 30s`",
+            ].join("\n")
         );
     },
 };
