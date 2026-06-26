@@ -9,20 +9,44 @@ module.exports = {
 	name: "help",
 
 	async execute(message, args = []) {
+		// NEW FUN TAB (iq, sacrifice, sleep, sus, judge)
 		const funEmbed = new EmbedBuilder()
+			.setColor("#e74c3c")
+			.setTitle("🎉 Nyako")
+			.setDescription(
+				[
+					"**Fun Commands**",
+					"",
+					"`nya!iq` :: Check your or someone else's IQ.",
+					"",
+					"`nya!sacrifice` :: Put someone up for sacrifice.",
+					"",
+					"`nya!sleep` :: Idk should you?",
+					"",
+					"`nya!sus` :: Are you sus? 👀",
+					"",
+					"`nya!judge` :: Judge guilty or not",
+				].join("\n"),
+			)
+			.setFooter({
+				text: "Page 1/5 • Nyako",
+			});
+
+		// ORIGINAL GAMES TAB (renamed internally)
+		const gamesEmbed = new EmbedBuilder()
 			.setColor("#e74c3c")
 			.setTitle("🎮 Nyako")
 			.setDescription(
 				[
-					"**Fun Games**",
+					"**Games**",
 					"",
-					"`nya!hotpotato`:: Pass the potato before it explodes.",
+					"`nya!hotpotato` :: Pass the potato before it explodes.",
 					"",
-					"`nya!roulette`:: Take turns spinning the chamber.",
+					"`nya!roulette` :: Take turns spinning the chamber.",
 				].join("\n"),
 			)
 			.setFooter({
-				text: "Page 1/3 • Nyako",
+				text: "Page 2/5 • Nyako",
 			});
 
 		const vcEmbed = new EmbedBuilder()
@@ -32,24 +56,24 @@ module.exports = {
 				[
 					"**Voice Controls**",
 					"",
-					"💨 `nya!yeet @user <time>`:: Disconnect the user.",
+					"💨 `nya!yeet @user <time>` :: Disconnect the user.",
 					"",
-					"💀 `nya!yeetall <time>`:: Disconnect everyone.",
+					"💀 `nya!yeetall <time>` :: Disconnect everyone.",
 					"",
-					"🔇 `nya!muteall <time>`:: Server mute everyone.",
+					"🔇 `nya!muteall <time>` :: Server mute everyone.",
 					"",
-					"🔊 `nya!unmuteall <time>`:: Remove server mute from everyone.",
+					"🔊 `nya!unmuteall <time>` :: Remove server mute from everyone.",
 					"",
-					"🔕 `nya!deafenall <time>`:: Server deafen everyone.",
+					"🔕 `nya!deafenall <time>` :: Server deafen everyone.",
 					"",
-					"🔔 `nya!undeafenall <time>`:: Remove server deafen from everyone.",
+					"🔔 `nya!undeafenall <time>` :: Remove server deafen from everyone.",
 					"",
 					"━━━━━━━━━━━━━━━━━━",
 					"⏱ `<time>` usage :: `30s` • `2m` • `1h30m` • `2h15m10s`",
 				].join("\n"),
 			)
 			.setFooter({
-				text: "Page 2/3 • Nyako",
+				text: "Page 3/5 • Nyako",
 			});
 
 		const utilityEmbed = new EmbedBuilder()
@@ -72,7 +96,7 @@ module.exports = {
 				].join("\n"),
 			)
 			.setFooter({
-				text: "Page 3/4 • Nyako",
+				text: "Page 4/5 • Nyako",
 			});
 
 		const miscEmbed = new EmbedBuilder()
@@ -84,25 +108,32 @@ module.exports = {
 					"",
 					"📖 `nya!help` :: Opens this help menu.",
 					"",
-					"",
 					"**Jump directly to a page**",
+					"`nya!help fun`",
 					"`nya!help games/game`",
 					"`nya!help vc/voice/controls`",
 					"`nya!help utility/util`",
 					"`nya!help misc`",
-					"",
 				].join("\n"),
 			)
 			.setFooter({
-				text: "Page 4/4 • Nyako",
+				text: "Page 5/5 • Nyako",
 			});
+
 		const createButtons = (page) =>
 			new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 					.setCustomId("fun")
-					.setLabel("🎮 Games")
+					.setLabel("🎉 Fun")
 					.setStyle(
 						page === "fun" ? ButtonStyle.Primary : ButtonStyle.Secondary,
+					),
+
+				new ButtonBuilder()
+					.setCustomId("games")
+					.setLabel("🎮 Games")
+					.setStyle(
+						page === "games" ? ButtonStyle.Primary : ButtonStyle.Secondary,
 					),
 
 				new ButtonBuilder()
@@ -114,7 +145,7 @@ module.exports = {
 
 				new ButtonBuilder()
 					.setCustomId("utility")
-					.setLabel("🛠️ Utility")
+					.setLabel("🛠️ Util")
 					.setStyle(
 						page === "utility" ? ButtonStyle.Primary : ButtonStyle.Secondary,
 					),
@@ -126,14 +157,18 @@ module.exports = {
 						page === "misc" ? ButtonStyle.Primary : ButtonStyle.Secondary,
 					),
 			);
+
 		const page = (args[0] || "").toLowerCase();
 
 		let embed = funEmbed;
 		let buttonPage = "fun";
 
-		if (["games", "game"].includes(page)) {
+		if (["fun"].includes(page)) {
 			embed = funEmbed;
 			buttonPage = "fun";
+		} else if (["games", "game"].includes(page)) {
+			embed = gamesEmbed;
+			buttonPage = "games";
 		} else if (["vc", "voice", "controls"].includes(page)) {
 			embed = vcEmbed;
 			buttonPage = "vc";
@@ -144,6 +179,7 @@ module.exports = {
 			embed = miscEmbed;
 			buttonPage = "misc";
 		}
+
 		const msg = await message.channel.send({
 			embeds: [embed],
 			components: [createButtons(buttonPage)],
@@ -164,32 +200,34 @@ module.exports = {
 
 			switch (interaction.customId) {
 				case "fun":
-					await interaction.update({
+					return interaction.update({
 						embeds: [funEmbed],
 						components: [createButtons("fun")],
 					});
-					break;
+
+				case "games":
+					return interaction.update({
+						embeds: [gamesEmbed],
+						components: [createButtons("games")],
+					});
 
 				case "vc":
-					await interaction.update({
+					return interaction.update({
 						embeds: [vcEmbed],
 						components: [createButtons("vc")],
 					});
-					break;
 
 				case "utility":
-					await interaction.update({
+					return interaction.update({
 						embeds: [utilityEmbed],
 						components: [createButtons("utility")],
 					});
-					break;
 
 				case "misc":
-					await interaction.update({
+					return interaction.update({
 						embeds: [miscEmbed],
 						components: [createButtons("misc")],
 					});
-					break;
 			}
 		});
 
@@ -197,33 +235,34 @@ module.exports = {
 			const disabledRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 					.setCustomId("fun_disabled")
+					.setLabel("🎉 Fun")
+					.setStyle(ButtonStyle.Secondary)
+					.setDisabled(true),
+				new ButtonBuilder()
+					.setCustomId("games_disabled")
 					.setLabel("🎮 Games")
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(true),
-
 				new ButtonBuilder()
 					.setCustomId("vc_disabled")
 					.setLabel("🎤 Voice")
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(true),
-
 				new ButtonBuilder()
 					.setCustomId("utility_disabled")
-					.setLabel("🛠️ Utility")
+					.setLabel("🛠️ Util")
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(true),
-
 				new ButtonBuilder()
 					.setCustomId("misc_disabled")
 					.setLabel("⚙️ Misc")
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(true),
 			);
+
 			try {
-				await msg.edit({
-					components: [disabledRow],
-				});
-			} catch (err) {}
+				await msg.edit({ components: [disabledRow] });
+			} catch {}
 		});
 	},
 };
