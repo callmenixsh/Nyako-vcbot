@@ -4,7 +4,8 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-
+const { safeEdit } = require("../utils/safeEdit");
+const { checkCooldown } = require("../utils/cooldowns");
 const hotPotatoes = require("../data/hotPotatoes");
 
 const potatoStages = [
@@ -88,22 +89,39 @@ async function updateBoard(game, customStatus = null) {
 
   const displayStatus = customStatus || stage;
 
-  await game.statusMessage
-    .edit({
-      embeds: [
-        createEmbed({
-          ...game,
-          status: displayStatus,
-        }),
-      ],
-      components: [row],
-    })
-    .catch(() => {});
+await safeEdit(
+    game.statusMessage,
+    {
+        embeds: [
+            createEmbed({
+                ...game,
+                status: displayStatus,
+            }),
+        ],
+        components: row ? [row] : [],
+    },
+    () => {
+        game.ended = true;
+
+        if (game.warningTimeout)
+            clearTimeout(game.warningTimeout);
+
+        hotPotatoes.delete(game.voiceChannelId);
+    }
+);
 }
 module.exports = {
   name: "hotpotato",
 
   async execute(message) {
+    			const remaining = checkCooldown(message.author.id, "iq", 60);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** The potato is being prepared.`
+		);
+
+	}
     const vc = message.member.voice.channel;
 
     if (!vc) return message.reply("Join a voice channel first.");
@@ -121,6 +139,7 @@ module.exports = {
 
     const game = {
       holderId: holder.id,
+      voiceChannelId: vc.id,
       endTime: Date.now() + explodeTime,
       maxTime: explodeTime,
       status: potatoStages[0],
@@ -214,10 +233,9 @@ module.exports = {
           `💀 <@${victim.id}> was vaporized by the potato!`,
         );
 
-        await currentGame.statusMessage.edit({
-          components: [],
-        });
-
+        await safeEdit(currentGame.statusMessage, {
+    components: [],
+});
         hotPotatoes.delete(vc.id);
 
         return;
@@ -235,9 +253,9 @@ module.exports = {
 
       await updateBoard(currentGame);
 
-      await currentGame.holderMessage
-        .edit(`🥔 <@${target.id}> has the potato!`)
-        .catch(() => {});
+      await safeEdit(currentGame.holderMessage, {
+    content: `🥔 <@${target.id}> has the potato!`,
+});
     });
 
     const scheduleWarning = async () => {
@@ -342,9 +360,9 @@ module.exports = {
             `# 💥 POTATO DETONATED\nPotato exploded on <@${victim.id}>`,
           );
 
-          await currentGame.holderMessage
-            .edit(`💀 <@${victim.id}> was vaporized by the potato!`)
-            .catch(() => {});
+          await safeEdit(currentGame.holderMessage, {
+    content: `💀 <@${victim.id}> was vaporized by the potato!`,
+});
 
           await message.channel.send(
             `🥔 ${victim} was vaporized by the potato.`,
@@ -354,11 +372,9 @@ module.exports = {
         }
       }
 
-      await statusMessage
-        .edit({
-          components: [],
-        })
-        .catch(() => {});
+      await safeEdit(statusMessage, {
+    components: [],
+});
 
       hotPotatoes.delete(vc.id);
     }, explodeTime);

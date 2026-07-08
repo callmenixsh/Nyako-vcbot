@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const { animateEmbed } = require("../utils/animateEmbed");
-
+const { checkCooldown } = require("../utils/cooldowns");
 function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -9,6 +9,14 @@ module.exports = {
     name: "sleep",
 
     async execute(message) {
+        			const remaining = checkCooldown(message.author.id, "sleep", 10);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** The advisor is resting.`
+		);
+
+	}
         const mentioned = message.mentions.members.first();
 
         // ✅ RULE FIX:

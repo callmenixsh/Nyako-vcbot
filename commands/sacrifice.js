@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
-
+const { safeEdit } = require("../utils/safeEdit");
+const { checkCooldown } = require("../utils/cooldowns");
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -15,6 +16,14 @@ module.exports = {
   name: "sacrifice",
 
   async execute(message) {
+    			const remaining = checkCooldown(message.author.id, "sacrifice", 60);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** the ritual was recently fed.`
+		);
+
+	}
     try {
       if (!message.guild) return;
 
@@ -93,15 +102,15 @@ module.exports = {
 
       await sleep(1200);
 
-      await msg.edit({
+      if (!(await safeEdit(msg, {
         embeds: [
           build("☠️ SIGNAL ACQUIRED", "the system is listening…", "Red"),
         ],
-      });
+      }))) return;
 
       await sleep(1200);
 
-      await msg.edit({
+      if (!(await safeEdit(msg, {
         embeds: [
           build(
             "🩸 SOMETHING IS RESPONDING",
@@ -111,7 +120,7 @@ module.exports = {
             "DarkOrange",
           ),
         ],
-      });
+      }))) return;
 
       await sleep(1200);
 
@@ -186,9 +195,9 @@ module.exports = {
               .join("");
           }
 
-          await msg.edit({
+          if (!(await safeEdit(msg, {
             embeds: [build("☠️ RITUAL IN PROGRESS", base, "Orange")],
-          });
+          }))) return;
 
           await sleep(450);
         }
@@ -198,7 +207,7 @@ module.exports = {
       // CRASH MOMENT (NEW FINAL FRAME)
       // =========================
 
-      await msg.edit({
+      if (!(await safeEdit(msg, {
         embeds: [
           build(
             "☠️ RITUAL CONVERGENCE",
@@ -206,12 +215,12 @@ module.exports = {
             "DarkRed",
           ),
         ],
-      });
+      }))) return;
       await sleep(900);
 
       await sleep(1200);
 
-      await msg.edit({
+      if (!(await safeEdit(msg, {
         embeds: [
           build(
             "☠️ ENTITY DECIDING OUTCOME",
@@ -219,7 +228,7 @@ module.exports = {
             "Red",
           ),
         ],
-      });
+      }))) return;
 
       await sleep(1200);
 
@@ -237,7 +246,7 @@ module.exports = {
         "was consumed without resistance.",
         "was accepted into the void.",
         "was quietly absorbed.",
-        "was faded out of existence.",
+        "faded out of existence.",
         "was erased like it was nothing.",
         "was thrown into the ritual.",
         "was taken without resistance.",
@@ -295,7 +304,7 @@ module.exports = {
         color = "Purple";
 
         for (let i = 0; i < frames.length; i++) {
-          await msg.edit({
+          if (!(await safeEdit(msg, {
             embeds: [
               new EmbedBuilder()
                 .setColor(
@@ -310,7 +319,7 @@ module.exports = {
                 .setTitle("☠️ SACRIFICE RESULT")
                 .setDescription(frames[i]),
             ],
-          });
+          }))) return;
 
           await sleep(800);
         }
@@ -325,17 +334,17 @@ module.exports = {
         const originalTarget = targets[0];
         const target = outcome === "backfire" ? message.member : originalTarget;
 
-        await msg.edit({
+        if (!(await safeEdit(msg, {
           embeds: [build("☠️ SACRIFICE RESULT", `${fmt(target)}`, "Blue")],
-        });
+        }))) return;
 
         await sleep(900);
 
-        await msg.edit({
+        if (!(await safeEdit(msg, {
           embeds: [
             build("☠️ SACRIFICE RESULT", `${fmt(target)} ...`, "Orange"),
           ],
-        });
+        }))) return;
 
         await sleep(900);
 
@@ -358,7 +367,7 @@ module.exports = {
       // =========================
       // FINAL OUTPUT
       // =========================
-      await msg.edit({
+      if (!(await safeEdit(msg, {
         embeds: [
           new EmbedBuilder()
             .setColor(color)
@@ -369,7 +378,7 @@ module.exports = {
             }),
         ],
         allowedMentions: { parse: ["everyone", "users"] },
-      });
+      }))) return;
     } catch (err) {
       console.error(err);
       return message.reply("the ritual failed to stabilize.");

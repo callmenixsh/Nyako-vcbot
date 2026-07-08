@@ -1,4 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
+const { checkCooldown } = require("../utils/cooldowns");
+const { safeEdit } = require("../utils/safeEdit");
 
 function getTitle(iq) {
 	if (iq <= 25) return "🥔 Potato Brain";
@@ -17,6 +19,14 @@ module.exports = {
 	name: "iq",
 
 	async execute(message) {
+			const remaining = checkCooldown(message.author.id, "iq", 10);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** The scanner is cooling down.`
+		);
+
+	}
 		const target = message.mentions.members.first() || message.member;
 
 		const msg = await message.channel.send({
@@ -56,7 +66,7 @@ module.exports = {
 
 			await sleep(450);
 
-			await msg.edit({
+			if (!(await safeEdit(msg, {
 				embeds: [
 					new EmbedBuilder()
 						.setColor("Blue")
@@ -67,12 +77,12 @@ module.exports = {
 							`IQ: \`${current}\``
 						),
 				],
-			});
+			}))) return;
 		}
 
 		await sleep(700);
 
-		await msg.edit({
+		if (!(await safeEdit(msg, {
 			embeds: [
 				new EmbedBuilder()
 					.setColor("DarkBlue")
@@ -85,6 +95,6 @@ module.exports = {
 					)
 					.setFooter({ text: "neural scan stabilized" }),
 			],
-		});
+		}))) return;
 	},
 };

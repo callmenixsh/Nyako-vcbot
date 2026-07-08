@@ -107,7 +107,14 @@ if (state) {
     const command = client.commands.get(cmd);
 
     if (command) {
-        command.execute(message, args, client, cmd);
+        try {
+            await command.execute(message, args, client, cmd);
+        } catch (err) {
+            console.error(`Error in command "${cmd}":`, err);
+            message.reply({
+                content: `❌ Command error: \`${err.message}\``,
+            }).catch(() => {});
+        }
     }
 });
 

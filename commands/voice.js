@@ -136,7 +136,7 @@ async function scheduleSingleAction({
       console.error("yeet error :", err);
     }
     if (!msg.editable) return;
-    await msg.edit({
+    if (!(await safeEdit(msg, {
       embeds: [
         new EmbedBuilder()
           .setColor("Red")
@@ -152,7 +152,7 @@ async function scheduleSingleAction({
           }),
       ],
       components: [],
-    });
+    }))) return;
   }, delayMs);
 
   const collector = msg.createMessageComponentCollector({
@@ -256,7 +256,7 @@ async function scheduleMassAction({
 
     const affectedText = affected.length ? affected.join(", ") : "Nobody";
     if (!msg.editable) return;
-    await msg.edit({
+    if (!(await safeEdit(msg, {
       embeds: [
         new EmbedBuilder()
           .setColor("Red")
@@ -270,7 +270,7 @@ async function scheduleMassAction({
           }),
       ],
       components: [],
-    });
+    }))) return;
   }, delayMs);
 
   const collector = msg.createMessageComponentCollector({

@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
-
+const { safeEdit } = require("../utils/safeEdit");
+const { checkCooldown } = require("../utils/cooldowns");
 function pick(arr) {
 	return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -11,6 +12,14 @@ module.exports = {
 	aliases: [],
 
 	async execute(message) {
+					const remaining = checkCooldown(message.author.id, "judge", 10);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** The blance is realigning.`
+		);
+
+	}
 		const target =
 			message.mentions.members.first() || message.member;
 
@@ -35,14 +44,14 @@ module.exports = {
 		];
 
 		for (const stage of stages) {
-			await msg.edit({
+			if (!(await safeEdit(msg, {
 				embeds: [
 					new EmbedBuilder()
 						.setColor("Orange")
 						.setTitle("⚖️ Court in Progress")
 						.setDescription(stage),
 				],
-			});
+			}))) return;
 
 			await sleep(1000);
 		}
@@ -80,7 +89,7 @@ module.exports = {
 
 		await sleep(1200);
 
-		await msg.edit({
+		if (!(await safeEdit(msg, {
 			embeds: [
 				new EmbedBuilder()
 					.setColor(color)
@@ -107,6 +116,6 @@ module.exports = {
 					)
 					.setFooter({ text: "Court session ended" }),
 			],
-		});
+		}))) return;
 	},
 };

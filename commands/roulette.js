@@ -4,11 +4,21 @@ const {
     ButtonBuilder,
     ButtonStyle,
 } = require('discord.js');
+const { safeEdit } = require("../utils/safeEdit");
+const { checkCooldown } = require("../utils/cooldowns");
 
 module.exports = {
     name: 'roulette',
 
     async execute(message) {
+        			const remaining = checkCooldown(message.author.id, "roulette", 60);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** The map is cleaning itself.`
+		);
+
+	}
         const voiceChannel = message.member.voice.channel;
 
         if (!voiceChannel)
@@ -113,7 +123,7 @@ module.exports = {
                 .setStyle(ButtonStyle.Danger)
         );
 
-        const gameMsg = await message.channel.send({
+        const msg = await message.channel.send({
             embeds: [
                 createGameEmbed(
                     players,
@@ -129,7 +139,7 @@ module.exports = {
         });
 
         const lobbyCollector =
-            gameMsg.createMessageComponentCollector({
+            msg.createMessageComponentCollector({
                 time: 30000,
             });
 
@@ -186,7 +196,7 @@ module.exports = {
 
         lobbyCollector.on('end', async (_, reason) => {
             if (reason === 'time' && !gameActive) {
-                await gameMsg.edit({
+                if (!(await safeEdit(msg, {
                     embeds: [
                         createGameEmbed(
                             players,
@@ -199,7 +209,7 @@ module.exports = {
                         ),
                     ],
                     components: [],
-                });
+                }))) return;
             }
         });
 
@@ -213,7 +223,7 @@ module.exports = {
             if (players.length <= 1) {
                 gameActive = false;
 
-                return gameMsg.edit({
+                return msg.edit({
                     embeds: [
                         new EmbedBuilder()
                             .setColor('Gold')
@@ -242,7 +252,7 @@ module.exports = {
             const player = players[turnIndex];
             turnIndex++;
 
-            await gameMsg.edit({
+            if (!(await safeEdit(msg, {
                 embeds: [
                     createGameEmbed(
                         players,
@@ -254,7 +264,7 @@ module.exports = {
                         `📢 **${player.user.tag}'s turn**`
                     ),
                 ],
-            });
+            }))) return;
 
             setTimeout(async () => {
                 if (!gameActive) return;
@@ -273,7 +283,7 @@ module.exports = {
                     if (turnIndex > players.length)
                         turnIndex = 0;
 
-                    await gameMsg.edit({
+                    if (!(await safeEdit(msg, {
                         embeds: [
                             createGameEmbed(
                                 players,
@@ -285,14 +295,14 @@ module.exports = {
                                 `💥 **BANG!**\n${player.user.tag} has been eliminated.`
                             ),
                         ],
-                    });
+                    }))) return;
 round++;
                     chamber = Math.floor(
                         Math.random() * 6
                     );
                     position = 0;
                 } else {
-                    await gameMsg.edit({
+                    if (!(await safeEdit(msg, {
                         embeds: [
                             createGameEmbed(
                                 players,
@@ -304,7 +314,7 @@ round++;
                                 `😮 **Click...**\n${player.user.tag} survived.`
                             ),
                         ],
-                    });
+                    }))) return;
 
                     position++;
                 }

@@ -1,10 +1,18 @@
 const { EmbedBuilder } = require("discord.js");
 const { animateEmbed } = require("../utils/animateEmbed");
-
+const { checkCooldown } = require("../utils/cooldowns");
 module.exports = {
     name: "sus",
 
     async execute(message) {
+        			const remaining = checkCooldown(message.author.id, "sus", 10);
+
+	if (remaining) {
+		return message.reply(
+			`⏳ Please wait **${remaining}s** The vents are clear`
+		);
+
+	}
         const mentioned = message.mentions.members.first();
 
         let target;

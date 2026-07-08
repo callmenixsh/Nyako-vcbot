@@ -4,6 +4,7 @@ const {
 	ButtonBuilder,
 	ButtonStyle,
 } = require("discord.js");
+const { safeEdit } = require("../utils/safeEdit");
 
 const activeTimers = new Map();
 
@@ -148,10 +149,10 @@ module.exports = {
 			);
 
 
-			await msg.edit({
+			if (!(await safeEdit(msg, {
 				embeds: [makeEmbed(0)],
 				components: [],
-			});
+			}))) return;
 
 			const ping = pingEveryone
     ? `@everyone <@${message.author.id}>`
@@ -187,10 +188,10 @@ await message.channel.send({ content });
 			const remaining = Math.max(0, end - Date.now());
 
 			try {
-				await msg.edit({
+				if (!(await safeEdit(msg, {
 					embeds: [makeEmbed(remaining)],
 					components: [row],
-				});
+				}))) return;
 			} catch {}
 		}, interval);
 
@@ -249,9 +250,9 @@ await message.channel.send({ content });
 			);
 
 			try {
-				await msg.edit({
+				if (!(await safeEdit(msg, {
 					components: [disabledRow],
-				});
+				}))) return;
 			} catch {}
 		});
 	},
