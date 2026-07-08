@@ -217,7 +217,7 @@ module.exports = {
                     embeds: [
                         new EmbedBuilder()
                             .setColor('Gold')
-                            .setTitle('🏆 Tournament Complete')
+                            .setTitle('🏆 Roulette Completed')
                             .setDescription(
                                 `👑 **${players[0]?.user.tag || 'Nobody'}**`
                             )
@@ -286,7 +286,7 @@ module.exports = {
                             ),
                         ],
                     });
-
+round++;
                     chamber = Math.floor(
                         Math.random() * 6
                     );
@@ -309,7 +309,6 @@ module.exports = {
                     position++;
                 }
 
-                round++;
 
                 setTimeout(nextTurn, 2000);
             }, 2000);

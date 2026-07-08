@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const sleepSequences = new Map();
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
+
 
 const client = new Client({
     intents: [
@@ -35,8 +37,64 @@ client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.on('messageCreate', async (message) => {
+client.on("messageCreate", async (message) => {
     if (message.author.bot) return;
+
+    const content = message.content.trim().toLowerCase();
+
+const state = sleepSequences.get(message.channel.id);
+
+if (!state && content === "3") {
+
+    const vc = message.member?.voice.channel;
+
+    // silently ignore if not in VC
+    if (!vc) return;
+
+    sleepSequences.set(message.channel.id, {
+        step: 1,
+        vc,
+        timeout: setTimeout(() => {
+            sleepSequences.delete(message.channel.id);
+        }, 15000),
+    });
+
+    return;
+}
+
+
+if (state) {
+
+    const expected =
+        state.step === 1 ? "2" :
+        state.step === 2 ? "1" :
+        "poof";
+
+
+    if (content === expected) {
+
+        state.step++;
+
+        if (state.step === 4) {
+
+            clearTimeout(state.timeout);
+            sleepSequences.delete(message.channel.id);
+
+            const voice = client.commands.get("voice");
+
+            if (voice?.scheduleSleep) {
+                await voice.scheduleSleep(message, state.vc);
+            }
+        }
+
+    } else {
+
+        clearTimeout(state.timeout);
+        sleepSequences.delete(message.channel.id);
+
+    }
+}
+    // ---------- Commands ----------
     if (!message.content.startsWith(PREFIX)) return;
 
     const args = message.content
