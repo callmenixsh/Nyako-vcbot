@@ -3,35 +3,49 @@ const path = require("path");
 
 const filePath = path.join(__dirname, "../data/marriages.json");
 
-let marriages = [];
-const activeProposals = new Map();
-const activeDivorces = new Map();
+let data = {
+  marriages: [],
+  proposals: [],
+  divorces: [],
+};
+
+function ensureFile() {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  }
+}
+
+function normalize(raw) {
+  return {
+    marriages: Array.isArray(raw.marriages) ? raw.marriages : [],
+    proposals: Array.isArray(raw.proposals) ? raw.proposals : [],
+    divorces: Array.isArray(raw.divorces) ? raw.divorces : [],
+  };
+}
 
 function load() {
   try {
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, JSON.stringify([], null, 2));
-    }
-
-    marriages = JSON.parse(fs.readFileSync(filePath, "utf8"));
-
-    if (!Array.isArray(marriages)) marriages = [];
+    ensureFile();
+    const raw = fs.readFileSync(filePath, "utf8");
+    data = normalize(raw ? JSON.parse(raw) : {});
   } catch (err) {
     console.error("Failed to load marriages:", err);
-    marriages = [];
+    data = {
+      marriages: [],
+      proposals: [],
+      divorces: [],
+    };
   }
 }
 
 function save() {
-  fs.writeFileSync(filePath, JSON.stringify(marriages, null, 2));
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
-// --------------------
-// Marriage
-// --------------------
-
 function getMarriage(userId) {
-  return marriages.find((m) => m.users.some((u) => u.id === userId)) || null;
+  return data.marriages.find((m) => m.users.some((u) => u.id === userId)) || null;
 }
 
 function isMarried(userId) {
@@ -40,14 +54,12 @@ function isMarried(userId) {
 
 function getPartner(userId) {
   const marriage = getMarriage(userId);
-
   if (!marriage) return null;
-
-  return marriage.users.find((u) => u.id !== userId);
+  return marriage.users.find((u) => u.id !== userId) || null;
 }
 
 function marry(user1, user2) {
-  marriages.push({
+  data.marriages.push({
     users: [
       {
         id: user1.id,
@@ -65,78 +77,84 @@ function marry(user1, user2) {
 
   save();
 }
+
 function divorce(userId) {
-  const index = marriages.findIndex((m) =>
-    m.users.some((u) => u.id === userId),
+  const index = data.marriages.findIndex((m) =>
+    m.users.some((u) => u.id === userId)
   );
 
   if (index === -1) return false;
 
-  marriages.splice(index, 1);
-
+  data.marriages.splice(index, 1);
   save();
-
   return true;
 }
 
-// --------------------
-// Proposal Manager
-// --------------------
-
 function hasActiveProposal(userId) {
-  return activeProposals.has(userId);
+  return data.proposals.some((p) => p.user1 === userId || p.user2 === userId);
 }
 
 function createProposal(user1, user2) {
-  activeProposals.set(user1, user2);
-  activeProposals.set(user2, user1);
+  data.proposals.push({
+    user1,
+    user2,
+    at: Date.now(),
+  });
+  save();
 }
 
 function removeProposal(user1, user2) {
-  activeProposals.delete(user1);
-  activeProposals.delete(user2);
+  data.proposals = data.proposals.filter(
+    (p) =>
+      !(
+        (p.user1 === user1 && p.user2 === user2) ||
+        (p.user1 === user2 && p.user2 === user1)
+      )
+  );
+  save();
 }
-// --------------------
-// Divorce Manager
-// --------------------
 
 function hasActiveDivorce(userId) {
-  return activeDivorces.has(userId);
+  return data.divorces.some((d) => d.user1 === userId || d.user2 === userId);
 }
 
 function createDivorce(user1, user2) {
-  activeDivorces.set(user1, user2);
-  activeDivorces.set(user2, user1);
+  data.divorces.push({
+    user1,
+    user2,
+    at: Date.now(),
+  });
+  save();
 }
 
 function removeDivorce(user1, user2) {
-  activeDivorces.delete(user1);
-  activeDivorces.delete(user2);
+  data.divorces = data.divorces.filter(
+    (d) =>
+      !(
+        (d.user1 === user1 && d.user2 === user2) ||
+        (d.user1 === user2 && d.user2 === user1)
+      )
+  );
+  save();
 }
 
-// --------------------
-// Helpers
-// --------------------
-
 function getAllMarriages() {
-  return marriages;
+  return data.marriages;
 }
 
 function getMarriageCount() {
-  return marriages.length;
+  return data.marriages.length;
 }
 
-function updateMarriageUser(userId, data) {
+function updateMarriageUser(userId, updates) {
   const marriage = getMarriage(userId);
-
   if (!marriage) return false;
 
   const user = marriage.users.find((u) => u.id === userId);
-
   if (!user) return false;
 
-  if (data.name) user.name = data.name;
-  if (data.avatar) user.avatar = data.avatar;
+  if (updates.name) user.name = updates.name;
+  if (updates.avatar) user.avatar = updates.avatar;
 
   save();
   return true;
@@ -147,21 +165,17 @@ load();
 module.exports = {
   load,
   save,
-
   getMarriage,
   isMarried,
   getPartner,
   marry,
   divorce,
-
   hasActiveProposal,
   createProposal,
   removeProposal,
-
   hasActiveDivorce,
   createDivorce,
   removeDivorce,
-
   getAllMarriages,
   getMarriageCount,
   updateMarriageUser,
