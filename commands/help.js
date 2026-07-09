@@ -14,12 +14,12 @@ const MODES = {
   slash: {
     label: "Slash Commands",
     emoji: "⚡",
-    intro: "Choose a category below to browse slash commands.",
+    intro: " ",
   },
   prefix: {
     label: "Prefix Commands",
     emoji: "⌨️",
-    intro: "Choose a category below to browse prefix commands.",
+    intro: " ",
   },
 };
 
@@ -30,7 +30,7 @@ const PAGE_DATA = {
     label: "Fun",
     emoji: "🎉",
     color: DEFAULT_COLOR,
-    title: "Fun Commands",
+    title: "Fun ",
     fields: {
       slash: [
         {
@@ -63,7 +63,7 @@ const PAGE_DATA = {
     label: "Games",
     emoji: "🎮",
     color: DEFAULT_COLOR,
-    title: "Game Commands",
+    title: "Game ",
     fields: {
       slash: [
         {
@@ -92,7 +92,7 @@ const PAGE_DATA = {
     label: "Social",
     emoji: "💞",
     color: "#ff9bd5",
-    title: "Social Commands",
+    title: "Social ",
     fields: {
       slash: [
         {
@@ -121,7 +121,7 @@ const PAGE_DATA = {
     label: "Voice",
     emoji: "🎤",
     color: DEFAULT_COLOR,
-    title: "Voice Commands",
+    title: "Voice ",
     fields: {
       slash: [
         {
@@ -181,7 +181,7 @@ const PAGE_DATA = {
     label: "Utility",
     emoji: "🛠️",
     color: DEFAULT_COLOR,
-    title: "Utility Commands",
+    title: "Utility ",
     fields: {
       slash: [
         {
@@ -189,7 +189,6 @@ const PAGE_DATA = {
           value: [
             "</timer:1524759254559490158> — Start a timer.",
             "</remind:1524759254559490161> — Set a reminder.",
-            "</clip:1524759254559490159> — Clip a message.",
           ].join("\n"),
         },
         {
@@ -260,7 +259,7 @@ const PAGE_DATA = {
     label: "Misc",
     emoji: "⚙️",
     color: DEFAULT_COLOR,
-    title: "Misc Commands",
+    title: "Misc",
     fields: {
       slash: [
         {
@@ -333,8 +332,8 @@ function buildComponents(page, mode) {
   const closeButton = new ButtonBuilder()
     .setCustomId("help_close")
     .setLabel("Close")
-    .setEmoji("❌")
-    .setStyle(ButtonStyle.Primary);
+    .setEmoji("⛔")
+    .setStyle(ButtonStyle.Danger);
 
   return [
     new ActionRowBuilder().addComponents(select),
