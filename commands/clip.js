@@ -1,4 +1,3 @@
-const { createCanvas, loadImage } = require("canvas");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
@@ -123,95 +122,48 @@ module.exports = {
       message.reference.messageId,
     );
 
-    // ---------------- CANVAS ----------------
+const {
+  EmbedBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
+} = require("discord.js");
 
-    const width = 900;
+const embed = new EmbedBuilder()
+  .setColor("#5865F2")
+  .setAuthor({
+    name: target.author.tag,
+    iconURL: target.author.displayAvatarURL(),
+  })
+  .setDescription(target.content || "*No text content*")
+  .setTimestamp(target.createdTimestamp);
 
-    const text = target.content || "[No text]";
+if (target.attachments.size) {
+  const firstAttachment = target.attachments.first();
 
-    const estimatedLines = Math.min(Math.ceil(text.length / 45), 8);
-
-    const height =
-      90 + estimatedLines * 30 + (target.attachments.size ? 40 : 0);
-
-    const canvas = createCanvas(900, height);
-
-    const ctx = canvas.getContext("2d");
-
-    // background
-
-    ctx.fillStyle = "#313338";
-
-    ctx.fillRect(0, 0, width, height);
-
-    // avatar
-
-    try {
-      const avatar = await getImage(
-        target.author.displayAvatarURL({
-          extension: "png",
-          size: 128,
-        }),
-      );
-
-      ctx.save();
-
-      ctx.beginPath();
-
-      ctx.arc(70, 80, 40, 0, Math.PI * 2);
-
-      ctx.clip();
-
-      ctx.drawImage(avatar, 30, 40, 80, 80);
-
-      ctx.restore();
-    } catch (err) {
-      console.log("Avatar failed");
-    }
-
-    // username
-
-    ctx.font = "bold 28px Arial";
-
-    ctx.fillStyle = "#ffffff";
-
-    ctx.fillText(target.author.username, 140, 70);
-
-    // timestamp
-
-    ctx.font = "18px Arial";
-
-    ctx.fillStyle = "#949ba4";
-
-    ctx.fillText(new Date(target.createdTimestamp).toLocaleString(), 140, 100);
-
-    // message
-    ctx.font = "20px Arial";
-    ctx.fillStyle = "#dbdee1";
-
-
-    wrapText(ctx, text, 140, 140, 700, 30, 5);
-
-    // attachments
-
-    if (target.attachments.size) {
-      ctx.font = "20px Arial";
-
-      ctx.fillStyle = "#00a8fc";
-
-      ctx.fillText("📎 Attachment included", 140, 210);
-    }
-
-    const image = new AttachmentBuilder(canvas.toBuffer(), {
-      name: "clip.png",
+  if (firstAttachment.contentType?.startsWith("image/")) {
+    embed.setImage(firstAttachment.url);
+  } else {
+    embed.addFields({
+      name: "📎 Attachment",
+      value: firstAttachment.url,
     });
+  }
+}
 
-    await clipChannel.send({
-      content: `📸 Clipped by ${message.author}`,
+const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setLabel("Jump to Message")
+    .setStyle(ButtonStyle.Link)
+    .setURL(target.url)
+);
 
-      files: [image],
-    });
+await clipChannel.send({
+  content: `📸 Clipped by ${message.author}`,
+  embeds: [embed],
+  components: [row],
+});
 
-    await message.reply(`📸 Clipped and saved in ${clipChannel}`);
+await message.reply(`📸 Clipped and saved in ${clipChannel}`);
   },
 };
