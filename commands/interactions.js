@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
+const { checkCooldown } = require("../utils/cooldowns"); // adjust path to match your project structure
 
 const pats = [
   "🐱 *purrs happily and leans into your hand.*",
@@ -120,98 +121,31 @@ const flowers = [
 ];
 
 const gifts = [
-  {
-    item: "🧸 Plushie",
-    response: "🧸 EEEEE!! Another plushie for my collection!",
-  },
-  {
-    item: "👑 Tiny Crown",
-    response: "👑 Do I look fancy now?",
-  },
-  {
-    item: "🎮 Video Game",
-    response: "🎮 ...Don't expect me to respond for a while.",
-  },
-  {
-    item: "📖 Book",
-    response: "📖 Ooo... bedtime reading!",
-  },
-  {
-    item: "🦆 Rubber Duck",
-    response: "🦆 It squeaks!!",
-  },
-  {
-    item: "🧶 Ball of Yarn",
-    response:
-      "🧶 ...I am NOT chasing it.\n\n...\n\n🐱 *immediately chases it.*",
-  },
-  {
-    item: "⭐ Gold Star",
-    response: "⭐ I'll proudly display this.",
-  },
-  {
-    item: "🍰 Cake",
-    response: "🍰 Dessert?! You spoil me.",
-  },
-  {
-    item: "🎀 Ribbon",
-    response: "🎀 It's cute... I like it!",
-  },
-  {
-    item: "🌙 Moon Charm",
-    response: "🌙 It's so pretty...",
-  },
+  { item: "🧸 Plushie", response: "🧸 EEEEE!! Another plushie for my collection!" },
+  { item: "👑 Tiny Crown", response: "👑 Do I look fancy now?" },
+  { item: "🎮 Video Game", response: "🎮 ...Don't expect me to respond for a while." },
+  { item: "📖 Book", response: "📖 Ooo... bedtime reading!" },
+  { item: "🦆 Rubber Duck", response: "🦆 It squeaks!!" },
+  { item: "🧶 Ball of Yarn", response: "🧶 ...I am NOT chasing it.\n\n...\n\n🐱 *immediately chases it.*" },
+  { item: "⭐ Gold Star", response: "⭐ I'll proudly display this." },
+  { item: "🍰 Cake", response: "🍰 Dessert?! You spoil me." },
+  { item: "🎀 Ribbon", response: "🎀 It's cute... I like it!" },
+  { item: "🌙 Moon Charm", response: "🌙 It's so pretty..." },
 ];
 
 const foods = [
-  {
-    item: "🍣 Sushi",
-    response: "🍣 Sushi!! You know me so well!",
-  },
-  {
-    item: "🍜 Ramen",
-    response: "🍜 *slurping noises.*",
-  },
-  {
-    item: "🍕 Pizza",
-    response: "🍕 Pizza solves many problems.",
-  },
-  {
-    item: "🍔 Burger",
-    response: "🍔 Worth every calorie.",
-  },
-  {
-    item: "🥞 Pancakes",
-    response: "🥞 Breakfast for dinner? I approve.",
-  },
-  {
-    item: "🍰 Cake",
-    response: "🍰 Dessert time!",
-  },
-  {
-    item: "🍓 Strawberries",
-    response: "🍓 Sweet and refreshing!",
-  },
-  {
-    item: "🍪 Cookies",
-    response: "🍪 More cookies?! I won't complain.",
-  },
-  {
-    item: "🧋 Boba",
-    response: "🧋 *happily sips.*",
-  },
-  {
-    item: "🐟 Fish",
-    response: "🐟 Best meal ever.",
-  },
-  {
-    item: "🍛 Curry",
-    response: "🍛 Ooo, this smells amazing!",
-  },
-  {
-    item: "🌮 Taco",
-    response: "🌮 Crunch!",
-  },
+  { item: "🍣 Sushi", response: "🍣 Sushi!! You know me so well!" },
+  { item: "🍜 Ramen", response: "🍜 *slurping noises.*" },
+  { item: "🍕 Pizza", response: "🍕 Pizza solves many problems." },
+  { item: "🍔 Burger", response: "🍔 Worth every calorie." },
+  { item: "🥞 Pancakes", response: "🥞 Breakfast for dinner? I approve." },
+  { item: "🍰 Cake", response: "🍰 Dessert time!" },
+  { item: "🍓 Strawberries", response: "🍓 Sweet and refreshing!" },
+  { item: "🍪 Cookies", response: "🍪 More cookies?! I won't complain." },
+  { item: "🧋 Boba", response: "🧋 *happily sips.*" },
+  { item: "🐟 Fish", response: "🐟 Best meal ever." },
+  { item: "🍛 Curry", response: "🍛 Ooo, this smells amazing!" },
+  { item: "🌮 Taco", response: "🌮 Crunch!" },
 ];
 
 const bullies = [
@@ -258,46 +192,16 @@ const bonks = [
 ];
 
 const throwables = [
-  {
-    item: "🧸 Plushie",
-    response: "Nyako caught it and hugged it instead.",
-  },
-  {
-    item: "🍅 Tomato",
-    response: '"HEY!!" 🍅',
-  },
-  {
-    item: "🥔 Potato",
-    response: "Free dinner!",
-  },
-  {
-    item: "🧦 Sock",
-    response: "...Why is it wet?",
-  },
-  {
-    item: "📖 Book",
-    response: "Knowledge hurts.",
-  },
-  {
-    item: "🪑 Chair",
-    response: '"WHERE DID YOU EVEN GET A CHAIR?!"',
-  },
-  {
-    item: "🍌 Banana",
-    response: "Nyako slipped immediately.",
-  },
-  {
-    item: "🪨 Rock",
-    response: '"OW?!"',
-  },
-  {
-    item: "🎈 Balloon",
-    response: "...That wasn't very threatening.",
-  },
-  {
-    item: "🍪 Cookie",
-    response: "She caught it and ate it.",
-  },
+  { item: "🧸 Plushie", response: "Nyako caught it and hugged it instead." },
+  { item: "🍅 Tomato", response: '"HEY!!" 🍅' },
+  { item: "🥔 Potato", response: "Free dinner!" },
+  { item: "🧦 Sock", response: "...Why is it wet?" },
+  { item: "📖 Book", response: "Knowledge hurts." },
+  { item: "🪑 Chair", response: '"WHERE DID YOU EVEN GET A CHAIR?!"' },
+  { item: "🍌 Banana", response: "Nyako slipped immediately." },
+  { item: "🪨 Rock", response: '"OW?!"' },
+  { item: "🎈 Balloon", response: "...That wasn't very threatening." },
+  { item: "🍪 Cookie", response: "She caught it and ate it." },
 ];
 
 const scares = [
@@ -365,6 +269,7 @@ const feeds = [
   "🧁 Sugar rush activated.",
   '🥹 "You\'re too nice to me..."',
 ];
+
 const tickles = [
   "😂 Nyako bursts into laughter.",
   '🤣 "S-Stop! I can\'t breathe!"',
@@ -544,19 +449,60 @@ const kills = [
 
 const rareKills = [
   '💀 Critical hit!\n\nNyako has been defeated...\n\n...\n\n👀 *one eye slowly opens*\n"A-Are they gone...?"',
-
   '😭 *dramatic anime death scene*\n\n🌸 Cherry blossoms begin falling.\n🎻 Sad music starts playing.\n\n...\n\n😳 "Wait... why am I still alive?"',
-
   '📦 Nyako packed all her belongings into a tiny box.\n🚪 She quietly left the server...\n\n...\n\n🔑 "I forgot my keys..."',
-
   "🪦 Here lies Nyako.\n'Gone too soon.'\n\n...\n\n🐾 *a tiny paw pops out of the grave*",
-
   "⚠️ Survival instinct activated.\n\n🏃 Nyako has disconnected from reality.\n\n✨ Reconnecting...",
-
   '😱 Nyako has called her lawyer.\n\n📞 "Is threatening the bot illegal...?"',
-
   '🌠 Nyako wished upon a shooting star.\n\n✨ "Please let them spare me..."',
 ];
+
+// ---------------------------------------------------------------------------
+// Command metadata: display title + emoji + color category for each alias.
+// Keeping this in one place makes it trivial to add a new interaction later
+// (just add the response pool above and one line here).
+// ---------------------------------------------------------------------------
+const COMMAND_META = {
+  pat: { title: "Pat", emoji: "🐾", tone: "sweet" },
+  hug: { title: "Hug", emoji: "🤗", tone: "sweet" },
+  boop: { title: "Boop", emoji: "👉", tone: "sweet" },
+  kiss: { title: "Kiss", emoji: "💋", tone: "sweet" },
+  cuddle: { title: "Cuddle", emoji: "🫂", tone: "sweet" },
+  cookie: { title: "Cookie", emoji: "🍪", tone: "sweet" },
+  coffee: { title: "Coffee", emoji: "☕", tone: "sweet" },
+  fish: { title: "Fish", emoji: "🐟", tone: "sweet" },
+  feed: { title: "Feed", emoji: "🍽️", tone: "sweet" },
+  flower: { title: "Flower", emoji: "🌸", tone: "sweet" },
+  gift: { title: "Gift", emoji: "🎁", tone: "sweet" },
+  tickle: { title: "Tickle", emoji: "😂", tone: "sweet" },
+  comfort: { title: "Comfort", emoji: "🫶", tone: "sweet" },
+  apologize: { title: "Apology", emoji: "🤍", tone: "sweet" },
+  care: { title: "Care", emoji: "💖", tone: "sweet" },
+  bully: { title: "Bully", emoji: "😾", tone: "mean" },
+  poke: { title: "Poke", emoji: "👉", tone: "mean" },
+  bonk: { title: "Bonk", emoji: "🔨", tone: "mean" },
+  throw: { title: "Throw", emoji: "🪃", tone: "mean" },
+  scare: { title: "Scare", emoji: "👻", tone: "mean" },
+  insult: { title: "Insult", emoji: "💢", tone: "mean" },
+  slap: { title: "Slap", emoji: "🖐️", tone: "mean" },
+  kill: { title: "Kill", emoji: "💀", tone: "mean" },
+  pspsps: { title: "pspsps", emoji: "🐾", tone: "secret" },
+  catnip: { title: "Catnip", emoji: "🌿", tone: "secret" },
+  system32: { title: "System32", emoji: "💻", tone: "secret" },
+  sudo: { title: "sudo", emoji: "🛡️", tone: "secret" },
+  taxes: { title: "Taxes", emoji: "💸", tone: "secret" },
+  konami: { title: "Konami Code", emoji: "🎮", tone: "secret" },
+  nyako: { title: "Nyako", emoji: "🐱", tone: "secret" },
+};
+
+const TONE_COLORS = {
+  sweet: 0xff9bd5, // pink
+  mean: 0xff6b6b, // soft red
+  secret: 0x7ee8fa, // cyan
+};
+
+// How long (in seconds) a user must wait between uses of any interaction here.
+const COOLDOWN_SECONDS = 3;
 
 module.exports = {
   name: "pat",
@@ -577,6 +523,7 @@ module.exports = {
     "throw",
     "scare",
     "insult",
+    "slap", // was missing — this alias was previously unreachable
     "tickle",
     "comfort",
     "apologize",
@@ -591,6 +538,8 @@ module.exports = {
     "kill",
   ],
   async execute(message, args, client, invokedName) {
+    const commandName = (invokedName || "pat").toLowerCase();
+
     const meanCommands = new Set([
       "kill",
       "bully",
@@ -637,17 +586,14 @@ module.exports = {
         const gift = gifts[Math.floor(Math.random() * gifts.length)];
         return `🎁 **You gave Nyako:** ${gift.item}\n\n${gift.response}`;
       },
-
       feed() {
         const food = foods[Math.floor(Math.random() * foods.length)];
         return `🍽️ **You fed Nyako:** ${food.item}\n\n${food.response}`;
       },
-
       throw() {
         const item = throwables[Math.floor(Math.random() * throwables.length)];
         return `🪃 **You threw:** ${item.item}\n\n${item.response}`;
       },
-
       kill() {
         return Math.random() < 0.03
           ? rareKills[Math.floor(Math.random() * rareKills.length)]
@@ -655,28 +601,47 @@ module.exports = {
       },
     };
 
-    let response;
+    // Cooldown check — quietly ignore instead of spamming a full embed.
+    const remaining = checkCooldown(message.author.id, commandName, COOLDOWN_SECONDS);
+    if (remaining > 0) {
+      const notice = await message.channel.send(
+        `⏳ Slow down! You can use **${commandName}** again in ${remaining}s.`
+      );
+      setTimeout(() => {
+        notice.delete().catch(() => {});
+        message.delete().catch(() => {}); // ignore if we lack perms or it's already gone
+      }, 3000);
+      return;
+    }
 
-    if (specialResponses[invokedName]) {
-      response = specialResponses[invokedName]();
+    let response;
+    if (specialResponses[commandName]) {
+      response = specialResponses[commandName]();
     } else {
-      const pool = simpleResponses[invokedName] ?? pats;
+      const pool = simpleResponses[commandName] ?? pats;
       response = pool[Math.floor(Math.random() * pool.length)];
     }
 
-    if (meanCommands.has(invokedName) && Math.random() < 0.02) {
+    if (meanCommands.has(commandName) && Math.random() < 0.02) {
       response += `\n\n${chaosEvents[Math.floor(Math.random() * chaosEvents.length)]}`;
     }
 
+    const meta = COMMAND_META[commandName] ?? { title: "Pat", emoji: "🐾", tone: "sweet" };
+    const color = TONE_COLORS[meta.tone] ?? TONE_COLORS.sweet;
+
     const embed = new EmbedBuilder()
-      .setColor(0xff9bd5)
+      .setColor(color)
+      .setTitle(`${meta.emoji} ${meta.title}`)
       .setDescription(response)
       .setFooter({
         text: `${message.author.username} ❤`,
+        iconURL: message.author.displayAvatarURL?.() ?? undefined,
       });
 
-    await message.channel.send({
-      embeds: [embed],
-    });
+    try {
+      await message.channel.send({ embeds: [embed] });
+    } catch (err) {
+      console.error(`[pat.js] Failed to send response for "${commandName}":`, err);
+    }
   },
 };
