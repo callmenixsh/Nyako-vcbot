@@ -31,6 +31,15 @@ for (const file of commandFiles) {
             client.commands.set(a, command);
         }
     }
+    // Also register under each slash/context-menu command name (e.g. "Clip
+    // Message" for a context menu command) — these don't always match
+    // command.name/aliases, so interactionCreate needs them too.
+    if (command.data) {
+        const builders = Array.isArray(command.data) ? command.data : [command.data];
+        for (const builder of builders) {
+            client.commands.set(builder.name, command);
+        }
+    }
 }
 
 client.on('ready', () => {
@@ -80,7 +89,7 @@ if (state) {
             clearTimeout(state.timeout);
             sleepSequences.delete(message.channel.id);
 
-            const voice = client.commands.get("voice");
+            const voice = client.commands.get("vc");
 
             if (voice?.scheduleSleep) {
                 await voice.scheduleSleep(message, state.vc);
@@ -115,6 +124,56 @@ if (state) {
                 content: `❌ Command error: \`${err.message}\``,
             }).catch(() => {});
         }
+    }
+});
+
+// ---------- Slash commands & context menu commands ----------
+async function handleInteractionError(interaction, err) {
+    console.error(`Error in interaction "${interaction.commandName}":`, err);
+
+    const errorResponse = {
+        content: `❌ Command error: \`${err.message}\``,
+        ephemeral: true,
+    };
+
+    if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorResponse).catch(() => {});
+    } else {
+        await interaction.reply(errorResponse).catch(() => {});
+    }
+}
+
+client.on('interactionCreate', async (interaction) => {
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+
+        if (!command || !command.executeInteraction) {
+            console.warn(`No slash handler found for "${interaction.commandName}".`);
+            return;
+        }
+
+        try {
+            await command.executeInteraction(interaction);
+        } catch (err) {
+            await handleInteractionError(interaction, err);
+        }
+        return;
+    }
+
+    if (interaction.isMessageContextMenuCommand()) {
+        const command = client.commands.get(interaction.commandName);
+
+        if (!command || !command.executeContextMenu) {
+            console.warn(`No context menu handler found for "${interaction.commandName}".`);
+            return;
+        }
+
+        try {
+            await command.executeContextMenu(interaction);
+        } catch (err) {
+            await handleInteractionError(interaction, err);
+        }
+        return;
     }
 });
 

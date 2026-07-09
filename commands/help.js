@@ -3,335 +3,433 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  SlashCommandBuilder,
+  StringSelectMenuBuilder,
+  MessageFlags,
 } = require("discord.js");
+
+const DEFAULT_COLOR = "#e74c3c";
+
+const MODES = {
+  slash: {
+    label: "Slash Commands",
+    emoji: "⚡",
+    intro: "Choose a category below to browse slash commands.",
+  },
+  prefix: {
+    label: "Prefix Commands",
+    emoji: "⌨️",
+    intro: "Choose a category below to browse prefix commands.",
+  },
+};
+
+const PAGE_ORDER = ["fun", "games", "social", "vc", "utility", "nyako", "misc"];
+
+const PAGE_DATA = {
+  fun: {
+    label: "Fun",
+    emoji: "🎉",
+    color: DEFAULT_COLOR,
+    title: "Fun Commands",
+    fields: {
+      slash: [
+        {
+          name: "Commands",
+          value: [
+            "</iq:1524747985102176379> — Check your or someone else's IQ.",
+            "</sacrifice:1524763913676259409> — Put someone up for sacrifice.",
+            "</sleep:1524768245285126287> — Idk should you?",
+            "</sus:1524747985102176382> — Are you sus? 👀",
+            "</judge:1524747985102176380> — Judge guilty or not.",
+          ].join("\n"),
+        },
+      ],
+      prefix: [
+        {
+          name: "Commands",
+          value: [
+            "`nya!iq` — Check your or someone else's IQ.",
+            "`nya!sacrifice` — Put someone up for sacrifice.",
+            "`nya!sleep` — Idk should you?",
+            "`nya!sus` — Are you sus? 👀",
+            "`nya!judge` — Judge guilty or not.",
+          ].join("\n"),
+        },
+      ],
+    },
+  },
+
+  games: {
+    label: "Games",
+    emoji: "🎮",
+    color: DEFAULT_COLOR,
+    title: "Game Commands",
+    fields: {
+      slash: [
+        {
+          name: "Commands",
+          value: [
+            "</hotpotato:1524769754366214307> — Pass the potato before it explodes.",
+            "</roulette:1524763913676259408> — Take turns spinning the chamber.",
+            "</court:1524778488001859694> — Put someone on trial.",
+          ].join("\n"),
+        },
+      ],
+      prefix: [
+        {
+          name: "Commands",
+          value: [
+            "`nya!hotpotato` — Pass the potato before it explodes.",
+            "`nya!roulette` — Take turns spinning the chamber.",
+            "`nya!court` — Put someone on trial.",
+          ].join("\n"),
+        },
+      ],
+    },
+  },
+
+  social: {
+    label: "Social",
+    emoji: "💞",
+    color: "#ff9bd5",
+    title: "Social Commands",
+    fields: {
+      slash: [
+        {
+          name: "Marriage",
+          value: [
+            "</marriage:1524768245285126286> — Open marriage options.",
+            "Use the action menu to pick marry, partner, divorce, or marriages.",
+          ].join("\n"),
+        },
+      ],
+      prefix: [
+        {
+          name: "Marriage",
+          value: [
+            "`nya!marry @user` — Propose to someone.",
+            "`nya!partner` — Show your current partner.",
+            "`nya!divorce` — Divorce your current partner.",
+            "`nya!marriages` — Show all marriages in the server.",
+          ].join("\n"),
+        },
+      ],
+    },
+  },
+
+  vc: {
+    label: "Voice",
+    emoji: "🎤",
+    color: DEFAULT_COLOR,
+    title: "Voice Commands",
+    fields: {
+      slash: [
+        {
+          name: "/vc user",
+          value: "</vc user:1524755958390194301> — Pick one user and choose an action.",
+        },
+        {
+          name: "/vc all",
+          value: "</vc all:1524755958390194301> — Pick an action for everyone in your current VC.",
+        },
+        {
+          name: "/vc afk",
+          value: "</vc afk:1524755958390194301> — Turn keepalive on or off.",
+        },
+        {
+          name: "Notes",
+          value: "The action menu includes disconnect, deafen, undeafen, mute, and unmute.",
+        },
+      ],
+      prefix: [
+        {
+          name: "Single Target",
+          value: [
+            "`nya!yeet @user <time>` — Disconnect a user.",
+            "`nya!deafen @user <time>` — Server deafen a user.",
+            "`nya!undeafen @user <time>` — Remove server deafen.",
+            "`nya!mute @user <time>` — Server mute a user.",
+            "`nya!unmute @user <time>` — Remove server mute.",
+          ].join("\n"),
+        },
+        {
+          name: "Everyone in VC",
+          value: [
+            "`nya!yeetall <time>` — Disconnect everyone.",
+            "`nya!deafenall <time>` — Server deafen everyone.",
+            "`nya!undeafenall <time>` — Remove server deafen.",
+            "`nya!muteall <time>` — Server mute everyone.",
+            "`nya!unmuteall <time>` — Remove server mute.",
+          ].join("\n"),
+        },
+        {
+          name: "Keepalive",
+          value: [
+            "`nya!afkvc`, `nya!stayvc`, `nya!keepvcalive` — Join and stay in VC.",
+            "`nya!leavevc`, `nya!stopvcalive`, `nya!leave` — Leave VC.",
+          ].join("\n"),
+        },
+        {
+          name: "Time Format",
+          value: "`30s` • `2m` • `1h30m` • `2h15m10s`",
+        },
+      ],
+    },
+  },
+
+  utility: {
+    label: "Utility",
+    emoji: "🛠️",
+    color: DEFAULT_COLOR,
+    title: "Utility Commands",
+    fields: {
+      slash: [
+        {
+          name: "Commands",
+          value: [
+            "</timer:1524759254559490158> — Start a timer.",
+            "</remind:1524759254559490161> — Set a reminder.",
+            "</clip:1524759254559490159> — Clip a message.",
+          ].join("\n"),
+        },
+        {
+          name: "Time Format",
+          value: "`30s` • `2m` • `1h30m` • `2h15m10s`",
+        },
+      ],
+      prefix: [
+        {
+          name: "Commands",
+          value: [
+            "`nya!timer <time> [message]` — Start a timer.",
+            "`nya!remind <time> [message]` — Set a reminder.",
+            "`nya!clip` — Clip a message.",
+          ].join("\n"),
+        },
+        {
+          name: "Time Format",
+          value: "`30s` • `2m` • `1h30m` • `2h15m10s`",
+        },
+      ],
+    },
+  },
+
+  nyako: {
+    label: "Nyako",
+    emoji: "🐱",
+    color: "#ff9bd5",
+    title: "Nyako Interactions",
+    fields: {
+      slash: [
+        {
+          name: "Command",
+          value: "</nyako:1524747985102176378> — Open the interaction menu.",
+        },
+        {
+          name: "Categories",
+          value: [
+            "Friendly: `pat`, `pet`, `hug`, `boop`, `kiss`, `cuddle`",
+            "Gifts: `cookie`, `feed`, `fish`, `coffee`, `flower`, `gift`",
+            "Chaos: `kill`, `bully`, `poke`, `bonk`, `throw`, `insult`, `scare`",
+            "Comfort: `comfort`, `apologize`, `care`",
+          ].join("\n"),
+        },
+      ],
+      prefix: [
+        {
+          name: "Friendly",
+          value: "`nya!pat` `nya!pet` `nya!hug` `nya!boop` `nya!kiss` `nya!cuddle`",
+        },
+        {
+          name: "Gifts",
+          value: "`nya!cookie` `nya!feed` `nya!fish` `nya!coffee` `nya!flower` `nya!gift`",
+        },
+        {
+          name: "Chaos",
+          value: "`nya!kill` `nya!bully` `nya!poke` `nya!bonk` `nya!throw` `nya!insult` `nya!scare`",
+        },
+        {
+          name: "Comfort",
+          value: "`nya!comfort` `nya!apologize` `nya!care`",
+        },
+      ],
+    },
+  },
+
+  misc: {
+    label: "Misc",
+    emoji: "⚙️",
+    color: DEFAULT_COLOR,
+    title: "Misc Commands",
+    fields: {
+      slash: [
+        {
+          name: "Help",
+          value: "`/help` — Open this menu.",
+        },
+      ],
+      prefix: [
+        {
+          name: "Help",
+          value: "`nya!help` — Open this menu.",
+        },
+      ],
+    },
+  },
+};
+
+function resolvePage(input) {
+  const page = (input || "").toLowerCase();
+  if (PAGE_DATA[page]) return page;
+  if (["games", "game"].includes(page)) return "games";
+  if (["vc", "voice", "controls"].includes(page)) return "vc";
+  if (["utility", "util"].includes(page)) return "utility";
+  if (["nyako", "interactions", "interaction"].includes(page)) return "nyako";
+  if (["social"].includes(page)) return "social";
+  if (["misc"].includes(page)) return "misc";
+  return "fun";
+}
+
+function buildHelpEmbed(page, mode, client) {
+  const data = PAGE_DATA[page];
+  const botAvatar = client.user.displayAvatarURL({ extension: "png", size: 512 });
+
+  return new EmbedBuilder()
+    .setColor(data.color)
+    .setAuthor({
+      name: `${client.user.username} Help`,
+      iconURL: botAvatar,
+    })
+    .setTitle(`${data.emoji} ${data.title}`)
+    .setThumbnail(botAvatar)
+    .setDescription(MODES[mode].intro)
+    .addFields(data.fields[mode] || [])
+    .setFooter({
+      text: `${MODES[mode].label} • Use the dropdown to switch categories`,
+    });
+}
+
+function buildComponents(page, mode) {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId("help_category")
+    .setPlaceholder("Select a category")
+    .setMinValues(1)
+    .setMaxValues(1)
+    .setOptions(
+      PAGE_ORDER.map((key) => ({
+        label: PAGE_DATA[key].label,
+        value: key,
+        emoji: PAGE_DATA[key].emoji,
+        default: key === page,
+      }))
+    );
+
+  const switchButton = new ButtonBuilder()
+    .setCustomId("help_switch_mode")
+    .setLabel(mode === "slash" ? "nya!" : "/--")
+    .setEmoji(mode === "slash" ? "⌨️" : "⚡")
+    .setStyle(ButtonStyle.Secondary);
+
+  const closeButton = new ButtonBuilder()
+    .setCustomId("help_close")
+    .setLabel("Close")
+    .setEmoji("❌")
+    .setStyle(ButtonStyle.Primary);
+
+  return [
+    new ActionRowBuilder().addComponents(select),
+    new ActionRowBuilder().addComponents(switchButton, closeButton),
+  ];
+}
+
+async function runHelpMenu(send, authorId, client, initialPage, initialMode = "slash") {
+  let page = initialPage;
+  let mode = initialMode;
+
+  const render = () => ({
+    embeds: [buildHelpEmbed(page, mode, client)],
+    components: buildComponents(page, mode),
+  });
+
+  const msg = await send(render());
+  const collector = msg.createMessageComponentCollector({ time: 60000 });
+
+  collector.on("collect", async (interaction) => {
+    if (interaction.user.id !== authorId) {
+      return interaction.reply({
+        content: "Only the person who used the command can use this menu.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    if (interaction.customId === "help_close") {
+      collector.stop("closed");
+      await interaction.deferUpdate().catch(() => {});
+      return msg.delete().catch(() => {});
+    }
+
+    if (interaction.customId === "help_switch_mode") {
+      mode = mode === "slash" ? "prefix" : "slash";
+      return interaction.update(render());
+    }
+
+    if (interaction.customId === "help_category") {
+      page = interaction.values[0];
+      if (!PAGE_DATA[page]) return;
+      return interaction.update(render());
+    }
+  });
+
+  collector.on("end", async (_, reason) => {
+    if (reason === "closed") return;
+    await msg.edit({ components: [] }).catch(() => {});
+  });
+}
 
 module.exports = {
   name: "help",
 
-  async execute(message, args = []) {
-    // NEW FUN TAB (iq, sacrifice, sleep, sus, judge)
-    const funEmbed = new EmbedBuilder()
-      .setColor("#e74c3c")
-      .setTitle("🎉 Nyako")
-      .setDescription(
-        [
-          "**Fun Commands**",
-          "",
-          "`nya!iq` :: Check your or someone else's IQ.",
-          "",
-          "`nya!sacrifice` :: Put someone up for sacrifice.",
-          "",
-          "`nya!sleep` :: Idk should you?",
-          "",
-          "`nya!sus` :: Are you sus? 👀",
-          "",
-          "`nya!judge` :: Judge guilty or not",
-        ].join("\n"),
-      )
-      .setFooter({
-        text: "Page 1/6 • Nyako",
-      });
+  data: new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Opens the Nyako help menu.")
+    .addStringOption((option) =>
+      option
+        .setName("page")
+        .setDescription("Jump directly to a specific page")
+        .setRequired(false)
+        .addChoices(
+          { name: "Fun", value: "fun" },
+          { name: "Games", value: "games" },
+          { name: "Social", value: "social" },
+          { name: "Voice", value: "vc" },
+          { name: "Utility", value: "utility" },
+          { name: "Nyako", value: "nyako" },
+          { name: "Misc", value: "misc" }
+        )
+    ),
 
-    // ORIGINAL GAMES TAB (renamed internally)
-    const gamesEmbed = new EmbedBuilder()
-      .setColor("#e74c3c")
-      .setTitle("🎮 Nyako")
-      .setDescription(
-        [
-          "**Games**",
-          "",
-          "`nya!hotpotato` :: Pass the potato before it explodes.",
-          "",
-          "`nya!roulette` :: Take turns spinning the chamber.",
-        ].join("\n"),
-      )
-      .setFooter({
-        text: "Page 2/6 • Nyako",
-      });
+  async execute(message, args = [], client) {
+    const initialPage = resolvePage(args[0]);
+    return runHelpMenu(
+      (payload) => message.channel.send(payload),
+      message.author.id,
+      client || message.client,
+      initialPage,
+      "prefix"
+    );
+  },
 
-    const vcEmbed = new EmbedBuilder()
-      .setColor("#e74c3c")
-      .setTitle("🎤 Nyako • Voice")
-      .setDescription(
-        [
-          "**Single User**",
-          "`nya!yeet @user <time>` • Disconnect a user.",
-          "`nya!mute @user <time>` • Server mute a user.",
-          "`nya!unmute @user <time>` • Remove server mute.",
-          "`nya!deafen @user <time>` • Server deafen a user.",
-          "`nya!undeafen @user <time>` • Remove server deafen.",
-          "",
-          "**Everyone in VC**",
-          "`nya!yeetall <time>` • Disconnect everyone.",
-          "`nya!muteall <time>` • Server mute everyone.",
-          "`nya!unmuteall <time>` • Remove server mute.",
-          "`nya!deafenall <time>` • Server deafen everyone.",
-          "`nya!undeafenall <time>` • Remove server deafen.",
-          "",
-          "**Utils**",
-          "`nya!afkvc/stayvc/keepvcalive` • Joins the VC and keeps it up.",
-          "`nya!leavevc/stopvcalive/leave` • Leaves the VC",
-          "",
-          "━━━━━━━━━━━━━━━━━━",
-          "⏱ **Time:** `30s` • `2m` • `1h30m` • `2h15m10s`",
-        ].join("\n"),
-      )
-      .setFooter({
-        text: "Page 3/6 • Nyako",
-      });
-
-    const utilityEmbed = new EmbedBuilder()
-      .setColor("#e74c3c")
-      .setTitle("🛠️ Nyako")
-      .setDescription(
-        [
-          "**Utility**",
-          "",
-          "`nya!timer <time> [message]` :: Start a personal timer.",
-          "`nya!timerall <time> [message]` :: Notify everyone when the timer ends.",
-          "",
-          "`nya!remind <time> [message]` :: Create a personal reminder.",
-          "`nya!remindall <time> [message]` :: Create a reminder for everyone.",
-          "",
-          "`nya!clip` :: Clip a message.",
-          "━━━━━━━━━━━━━━━━━━",
-          "⏱ `<time>` usage :: `30s` • `2m` • `1h30m` • `2h15m10s`",
-        ].join("\n"),
-      )
-      .setFooter({
-        text: "Page 4/6 • Nyako",
-      });
-
-    const nyakoEmbed = new EmbedBuilder()
-      .setColor("#ff9bd5")
-      .setTitle("🐱 Nyako")
-      .setDescription(
-        [
-          "**Interact with Nyako**",
-          "",
-          "**Friendly**",
-          "`nya!pat` `nya!pet` `nya!hug` `nya!boop`",
-          "`nya!kiss` `nya!cuddle`",
-          "",
-          "**Gifts**",
-          "`nya!cookie` `nya!feed` `nya!fish`",
-          "`nya!coffee` `nya!flower` `nya!gift`",
-          "",
-          "**Chaos**",
-          "`nya!kill` `nya!bully` `nya!poke`",
-          "`nya!bonk` `nya!throw` `nya!insult`",
-          "`nya!scare`",
-          "",
-          "**Comfort**",
-          "`nya!comfort` `nya!apologize` `nya!care`",
-          "",
-          "*There may be a few hidden interactions...* 👀",
-        ].join("\n"),
-      )
-      .setFooter({
-        text: "Page 5/6 • Nyako",
-      });
-
-    const miscEmbed = new EmbedBuilder()
-      .setColor("#e74c3c")
-      .setTitle("⚙️ Nyako")
-      .setDescription(
-        [
-          "**Misc**",
-          "",
-          "`nya!help` :: Opens this help menu.",
-          "`nya!marry @user` :: Propose to another user.",
-          "`nya!divorce` :: Divorce your current partner.",
-          "`nya!marriage` :: View your marriage information.",
-          "",
-          "**Jump directly to a page**",
-          "`nya!help fun`",
-          "`nya!help games`",
-          "`nya!help vc`",
-          "`nya!help utility`",
-          "`nya!help nyako`",
-          "`nya!help misc`",
-        ].join("\n"),
-      )
-      .setFooter({
-        text: "Page 6/6 • Nyako",
-      });
-
-    const createButtons = (page) => [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("fun")
-          .setLabel("🎉 Fun")
-          .setStyle(
-            page === "fun" ? ButtonStyle.Primary : ButtonStyle.Secondary,
-          ),
-
-        new ButtonBuilder()
-          .setCustomId("games")
-          .setLabel("🎮 Games")
-          .setStyle(
-            page === "games" ? ButtonStyle.Primary : ButtonStyle.Secondary,
-          ),
-
-        new ButtonBuilder()
-          .setCustomId("vc")
-          .setLabel("🎤 Voice")
-          .setStyle(
-            page === "vc" ? ButtonStyle.Primary : ButtonStyle.Secondary,
-          ),
-
-        new ButtonBuilder()
-          .setCustomId("utility")
-          .setLabel("🛠️ Utility")
-          .setStyle(
-            page === "utility" ? ButtonStyle.Primary : ButtonStyle.Secondary,
-          ),
-
-        new ButtonBuilder()
-          .setCustomId("nyako")
-          .setLabel("🐱 Nyako")
-          .setStyle(
-            page === "nyako" ? ButtonStyle.Primary : ButtonStyle.Secondary,
-          ),
-      ),
-
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("misc")
-          .setLabel("⚙️ Misc")
-          .setStyle(
-            page === "misc" ? ButtonStyle.Primary : ButtonStyle.Secondary,
-          ),
-      ),
-    ];
-
-    const page = (args[0] || "").toLowerCase();
-
-    let embed = funEmbed;
-    let buttonPage = "fun";
-
-    if (["fun"].includes(page)) {
-      embed = funEmbed;
-      buttonPage = "fun";
-    } else if (["games", "game"].includes(page)) {
-      embed = gamesEmbed;
-      buttonPage = "games";
-    } else if (["vc", "voice", "controls"].includes(page)) {
-      embed = vcEmbed;
-      buttonPage = "vc";
-    } else if (["utility", "util"].includes(page)) {
-      embed = utilityEmbed;
-      buttonPage = "utility";
-    } else if (["nyako", "interactions", "interaction"].includes(page)) {
-      embed = nyakoEmbed;
-      buttonPage = "nyako";
-    } else if (["misc"].includes(page)) {
-      embed = miscEmbed;
-      buttonPage = "misc";
-    }
-
-    const msg = await message.channel.send({
-      embeds: [embed],
-      components: createButtons(buttonPage),
-    });
-
-    const collector = msg.createMessageComponentCollector({
-      time: 60000,
-    });
-
-    collector.on("collect", async (interaction) => {
-      if (interaction.user.id !== message.author.id) {
-        return interaction.reply({
-          content:
-            "Only the person who used the command can use these buttons.",
-          ephemeral: true,
-        });
-      }
-
-      switch (interaction.customId) {
-        case "fun":
-          return interaction.update({
-            embeds: [funEmbed],
-            components: createButtons("fun"),
-          });
-
-        case "games":
-          return interaction.update({
-            embeds: [gamesEmbed],
-            components: createButtons("games"),
-          });
-
-        case "vc":
-          return interaction.update({
-            embeds: [vcEmbed],
-            components: createButtons("vc"),
-          });
-
-        case "utility":
-          return interaction.update({
-            embeds: [utilityEmbed],
-            components: createButtons("utility"),
-          });
-        case "nyako":
-          return interaction.update({
-            embeds: [nyakoEmbed],
-            components: createButtons("nyako"),
-          });
-
-        case "misc":
-          return interaction.update({
-            embeds: [miscEmbed],
-            components: createButtons("misc"),
-          });
-      }
-    });
-
-    collector.on("end", async () => {
-      const disabledRows = [
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("fun_disabled")
-            .setLabel("🎉 Fun")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-
-          new ButtonBuilder()
-            .setCustomId("games_disabled")
-            .setLabel("🎮 Games")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-
-          new ButtonBuilder()
-            .setCustomId("vc_disabled")
-            .setLabel("🎤 Voice")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-
-          new ButtonBuilder()
-            .setCustomId("utility_disabled")
-            .setLabel("🛠️ Utility")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-
-          new ButtonBuilder()
-            .setCustomId("nyako_disabled")
-            .setLabel("🐱 Nyako")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-        ),
-
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("misc_disabled")
-            .setLabel("⚙️ Misc")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true),
-        ),
-      ];
-
-      try {
-        await msg.edit({ components: disabledRows });
-      } catch {}
-    });
+  async executeInteraction(interaction) {
+    const initialPage = resolvePage(interaction.options.getString("page"));
+    return runHelpMenu(
+      async (payload) => {
+        await interaction.reply(payload);
+        return interaction.fetchReply();
+      },
+      interaction.user.id,
+      interaction.client,
+      initialPage,
+      "slash"
+    );
   },
 };

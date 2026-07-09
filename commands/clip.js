@@ -1,4 +1,11 @@
-const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
+const {
+  EmbedBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
+  ContextMenuCommandBuilder,
+  ApplicationCommandType,
+} = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
@@ -17,6 +24,11 @@ function saveConfig(config) {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
+// NOTE: getImage/wrapText below aren't called anywhere in this file (looks
+// like leftovers from a canvas-based screenshot feature — getImage also
+// calls loadImage() which isn't imported here). Left untouched since you
+// didn't ask about them, but flagging in case they're meant to be wired up
+// or can be deleted.
 function getImage(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
@@ -68,11 +80,84 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
   });
 }
 
+/**
+ * Build the embed + "Jump to Message" button for a clipped message.
+ * Shared by both the reply-based prefix command and the context menu command.
+ */
+function buildClipPayload(target, invokerUser) {
+  const embed = new EmbedBuilder()
+    .setColor("#5865F2")
+    .setAuthor({
+      name: target.author.tag,
+      iconURL: target.author.displayAvatarURL(),
+    })
+    .setDescription(target.content || "*No text content*")
+    .setTimestamp(target.createdTimestamp);
+
+  if (target.attachments.size) {
+    const firstAttachment = target.attachments.first();
+
+    if (firstAttachment.contentType?.startsWith("image/")) {
+      embed.setImage(firstAttachment.url);
+    } else {
+      embed.addFields({
+        name: "📎 Attachment",
+        value: firstAttachment.url,
+      });
+    }
+  }
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel("Jump to Message")
+      .setStyle(ButtonStyle.Link)
+      .setURL(target.url)
+  );
+
+  return {
+    content: `📸 Clipped by ${invokerUser}`,
+    embeds: [embed],
+    components: [row],
+  };
+}
+
+/**
+ * Look up the configured clip channel for a guild.
+ * @returns {{ ok: true, channel } | { ok: false, reason: string }}
+ */
+function resolveClipChannel(guild) {
+  const config = loadConfig();
+  const guildConfig = config[guild.id];
+
+  if (!guildConfig) {
+    return {
+      ok: false,
+      reason: "Clip channel is not setup yet.\n\nUse:\n`nya!clip setup #channel`",
+    };
+  }
+
+  const clipChannel = guild.channels.cache.get(guildConfig.channelId);
+
+  if (!clipChannel) {
+    return { ok: false, reason: "❌ Saved clip channel no longer exists." };
+  }
+
+  return { ok: true, channel: clipChannel };
+}
+
 module.exports = {
   name: "clip",
-
   aliases: ["screenshot"],
 
+  // Message context menu command: right-click a message → Apps → Clip Message.
+  // Context menu commands can't have a description — Discord doesn't allow one.
+  data: [
+    new ContextMenuCommandBuilder()
+      .setName("Clip Message")
+      .setType(ApplicationCommandType.Message),
+  ],
+
+  // ----- Prefix command: "nya!clip" as a reply to a message -----
   async execute(message, args) {
     const config = loadConfig();
 
@@ -98,18 +183,10 @@ module.exports = {
 
     // ---------------- CHECK SETUP ----------------
 
-    const guildConfig = config[message.guild.id];
+    const resolved = resolveClipChannel(message.guild);
 
-    if (!guildConfig) {
-      return message.reply(
-        "Clip channel is not setup yet.\n\nUse:\n`nya!clip setup #channel`",
-      );
-    }
-
-    const clipChannel = message.guild.channels.cache.get(guildConfig.channelId);
-
-    if (!clipChannel) {
-      return message.reply("❌ Saved clip channel no longer exists.");
+    if (!resolved.ok) {
+      return message.reply(resolved.reason);
     }
 
     // ---------------- MESSAGE CHECK ----------------
@@ -122,48 +199,26 @@ module.exports = {
       message.reference.messageId,
     );
 
-const {
-  EmbedBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-} = require("discord.js");
+    await resolved.channel.send(buildClipPayload(target, message.author));
 
-const embed = new EmbedBuilder()
-  .setColor("#5865F2")
-  .setAuthor({
-    name: target.author.tag,
-    iconURL: target.author.displayAvatarURL(),
-  })
-  .setDescription(target.content || "*No text content*")
-  .setTimestamp(target.createdTimestamp);
+    return message.reply(`📸 Clipped and saved in ${resolved.channel}`);
+  },
 
-if (target.attachments.size) {
-  const firstAttachment = target.attachments.first();
+  // ----- Message context menu command: right-click → Apps → Clip Message -----
+  async executeContextMenu(interaction) {
+    const resolved = resolveClipChannel(interaction.guild);
 
-  if (firstAttachment.contentType?.startsWith("image/")) {
-    embed.setImage(firstAttachment.url);
-  } else {
-    embed.addFields({
-      name: "📎 Attachment",
-      value: firstAttachment.url,
+    if (!resolved.ok) {
+      return interaction.reply({ content: resolved.reason, ephemeral: true });
+    }
+
+    const target = interaction.targetMessage;
+
+    await resolved.channel.send(buildClipPayload(target, interaction.user));
+
+    return interaction.reply({
+      content: `📸 Clipped and saved in ${resolved.channel}`,
+      ephemeral: true,
     });
-  }
-}
-
-const row = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setLabel("Jump to Message")
-    .setStyle(ButtonStyle.Link)
-    .setURL(target.url)
-);
-
-await clipChannel.send({
-  content: `📸 Clipped by ${message.author}`,
-  embeds: [embed],
-  components: [row],
-});
-
-await message.reply(`📸 Clipped and saved in ${clipChannel}`);
   },
 };

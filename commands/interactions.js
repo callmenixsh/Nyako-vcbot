@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
 const { checkCooldown } = require("../utils/cooldowns"); // adjust path to match your project structure
 
 const pats = [
@@ -463,36 +463,40 @@ const rareKills = [
 // (just add the response pool above and one line here).
 // ---------------------------------------------------------------------------
 const COMMAND_META = {
-  pat: { title: "Pat", emoji: "🐾", tone: "sweet" },
-  hug: { title: "Hug", emoji: "🤗", tone: "sweet" },
-  boop: { title: "Boop", emoji: "👉", tone: "sweet" },
-  kiss: { title: "Kiss", emoji: "💋", tone: "sweet" },
-  cuddle: { title: "Cuddle", emoji: "🫂", tone: "sweet" },
-  cookie: { title: "Cookie", emoji: "🍪", tone: "sweet" },
-  coffee: { title: "Coffee", emoji: "☕", tone: "sweet" },
-  fish: { title: "Fish", emoji: "🐟", tone: "sweet" },
-  feed: { title: "Feed", emoji: "🍽️", tone: "sweet" },
-  flower: { title: "Flower", emoji: "🌸", tone: "sweet" },
-  gift: { title: "Gift", emoji: "🎁", tone: "sweet" },
-  tickle: { title: "Tickle", emoji: "😂", tone: "sweet" },
-  comfort: { title: "Comfort", emoji: "🫶", tone: "sweet" },
-  apologize: { title: "Apology", emoji: "🤍", tone: "sweet" },
-  care: { title: "Care", emoji: "💖", tone: "sweet" },
-  bully: { title: "Bully", emoji: "😾", tone: "mean" },
-  poke: { title: "Poke", emoji: "👉", tone: "mean" },
-  bonk: { title: "Bonk", emoji: "🔨", tone: "mean" },
-  throw: { title: "Throw", emoji: "🪃", tone: "mean" },
-  scare: { title: "Scare", emoji: "👻", tone: "mean" },
-  insult: { title: "Insult", emoji: "💢", tone: "mean" },
-  slap: { title: "Slap", emoji: "🖐️", tone: "mean" },
-  kill: { title: "Kill", emoji: "💀", tone: "mean" },
-  pspsps: { title: "pspsps", emoji: "🐾", tone: "secret" },
-  catnip: { title: "Catnip", emoji: "🌿", tone: "secret" },
-  system32: { title: "System32", emoji: "💻", tone: "secret" },
-  sudo: { title: "sudo", emoji: "🛡️", tone: "secret" },
-  taxes: { title: "Taxes", emoji: "💸", tone: "secret" },
-  konami: { title: "Konami Code", emoji: "🎮", tone: "secret" },
-  nyako: { title: "Nyako", emoji: "🐱", tone: "secret" },
+  pat: { title: "Pat", emoji: "🐾", tone: "sweet", slashEnabled: true },
+  hug: { title: "Hug", emoji: "🤗", tone: "sweet", slashEnabled: true },
+  boop: { title: "Boop", emoji: "👉", tone: "sweet", slashEnabled: true },
+  kiss: { title: "Kiss", emoji: "💋", tone: "sweet", slashEnabled: true },
+  cuddle: { title: "Cuddle", emoji: "🫂", tone: "sweet", slashEnabled: true },
+  cookie: { title: "Cookie", emoji: "🍪", tone: "sweet", slashEnabled: true },
+  coffee: { title: "Coffee", emoji: "☕", tone: "sweet", slashEnabled: true },
+  fish: { title: "Fish", emoji: "🐟", tone: "sweet", slashEnabled: true },
+  feed: { title: "Feed", emoji: "🍽️", tone: "sweet", slashEnabled: true },
+  flower: { title: "Flower", emoji: "🌸", tone: "sweet", slashEnabled: true },
+  gift: { title: "Gift", emoji: "🎁", tone: "sweet", slashEnabled: true },
+  tickle: { title: "Tickle", emoji: "😂", tone: "sweet", slashEnabled: true },
+  comfort: { title: "Comfort", emoji: "🫶", tone: "sweet", slashEnabled: true },
+  apologize: { title: "Apology", emoji: "🤍", tone: "sweet", slashEnabled: true },
+  care: { title: "Care", emoji: "💖", tone: "sweet", slashEnabled: true },
+  bully: { title: "Bully", emoji: "😾", tone: "mean", slashEnabled: true },
+  poke: { title: "Poke", emoji: "👉", tone: "mean", slashEnabled: true },
+  bonk: { title: "Bonk", emoji: "🔨", tone: "mean", slashEnabled: true },
+  throw: { title: "Throw", emoji: "🪃", tone: "mean", slashEnabled: true },
+  scare: { title: "Scare", emoji: "👻", tone: "mean", slashEnabled: true },
+  insult: { title: "Insult", emoji: "💢", tone: "mean", slashEnabled: true },
+  slap: { title: "Slap", emoji: "🖐️", tone: "mean", slashEnabled: true },
+  kill: { title: "Kill", emoji: "💀", tone: "mean", slashEnabled: true },
+  // Secret/easter-egg commands stay prefix-only by default so they keep their
+  // surprise factor — appearing in the /nyako subcommand autocomplete list
+  // with a description would spoil the joke. Flip slashEnabled to true for
+  // any of these if you don't mind that.
+  pspsps: { title: "pspsps", emoji: "🐾", tone: "secret", slashEnabled: false },
+  catnip: { title: "Catnip", emoji: "🌿", tone: "secret", slashEnabled: false },
+  system32: { title: "System32", emoji: "💻", tone: "secret", slashEnabled: false },
+  sudo: { title: "sudo", emoji: "🛡️", tone: "secret", slashEnabled: false },
+  taxes: { title: "Taxes", emoji: "💸", tone: "secret", slashEnabled: false },
+  konami: { title: "Konami Code", emoji: "🎮", tone: "secret", slashEnabled: false },
+  nyako: { title: "Nyako", emoji: "🐱", tone: "secret", slashEnabled: false },
 };
 
 const TONE_COLORS = {
@@ -503,6 +507,121 @@ const TONE_COLORS = {
 
 // How long (in seconds) a user must wait between uses of any interaction here.
 const COOLDOWN_SECONDS = 3;
+
+const meanCommands = new Set([
+  "kill",
+  "bully",
+  "poke",
+  "bonk",
+  "throw",
+  "insult",
+  "scare",
+  "slap",
+]);
+
+const simpleResponses = {
+  pat: pats,
+  hug: hugs,
+  boop: boops,
+  kiss: kisses,
+  cuddle: cuddles,
+  cookie: cookies,
+  coffee: coffees,
+  fish: fishes,
+  flower: flowers,
+  bully: bullies,
+  poke: pokes,
+  bonk: bonks,
+  scare: scares,
+  insult: insults,
+  slap: slaps,
+  tickle: tickles,
+  comfort: comforts,
+  apologize: apologies,
+  care: cares,
+  // Secret
+  pspsps,
+  catnip: catnips,
+  system32,
+  sudo: sudos,
+  taxes,
+  konami: konamis,
+  nyako: nyakos,
+};
+
+const specialResponses = {
+  gift() {
+    const gift = gifts[Math.floor(Math.random() * gifts.length)];
+    return `🎁 **You gave Nyako:** ${gift.item}\n\n${gift.response}`;
+  },
+  feed() {
+    const food = foods[Math.floor(Math.random() * foods.length)];
+    return `🍽️ **You fed Nyako:** ${food.item}\n\n${food.response}`;
+  },
+  throw() {
+    const item = throwables[Math.floor(Math.random() * throwables.length)];
+    return `🪃 **You threw:** ${item.item}\n\n${item.response}`;
+  },
+  kill() {
+    return Math.random() < 0.03
+      ? rareKills[Math.floor(Math.random() * rareKills.length)]
+      : kills[Math.floor(Math.random() * kills.length)];
+  },
+};
+
+/**
+ * Build the embed for a given action. Shared by both the prefix-command
+ * and slash-command entry points so the actual response logic only lives
+ * in one place.
+ * @param {string} commandName
+ * @param {{ username: string, avatarURL?: string }} user
+ * @returns {EmbedBuilder}
+ */
+function buildResponseEmbed(commandName, user) {
+  let response;
+  if (specialResponses[commandName]) {
+    response = specialResponses[commandName]();
+  } else {
+    const pool = simpleResponses[commandName] ?? pats;
+    response = pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  if (meanCommands.has(commandName) && Math.random() < 0.02) {
+    response += `\n\n${chaosEvents[Math.floor(Math.random() * chaosEvents.length)]}`;
+  }
+
+  const meta = COMMAND_META[commandName] ?? { title: "Pat", emoji: "🐾", tone: "sweet" };
+  const color = TONE_COLORS[meta.tone] ?? TONE_COLORS.sweet;
+
+  return new EmbedBuilder()
+    .setColor(color)
+    .setTitle(`${meta.emoji} ${meta.title}`)
+    .setDescription(response)
+    .setFooter({ text: `${user.username} ❤`, iconURL: user.avatarURL ?? undefined });
+}
+
+// ---------------------------------------------------------------------------
+// Single top-level "/nyako" command with one required "action" option that
+// uses choices, so opening the command shows one field with a dropdown
+// instead of a list of subcommands. Discord caps string option choices at
+// 25 — we're at 22 enabled ones below, so there's a little headroom.
+// ---------------------------------------------------------------------------
+const nyakoCommandBuilder = new SlashCommandBuilder()
+  .setName("nyako")
+  .setDescription("Interact with Nyako")
+  .addStringOption((option) => {
+    option
+      .setName("action")
+      .setDescription("What do you want to do?")
+      .setRequired(true);
+
+    for (const [commandName, meta] of Object.entries(COMMAND_META)) {
+      if (meta.slashEnabled === false) continue;
+      option.addChoices({ name: `${meta.emoji} ${meta.title}`, value: commandName });
+    }
+
+    return option;
+  });
 
 module.exports = {
   name: "pat",
@@ -537,69 +656,11 @@ module.exports = {
     "konami",
     "kill",
   ],
+  data: nyakoCommandBuilder, // single SlashCommandBuilder with subcommands — see deploy-commands.js
+
+  // ----- Prefix-command entry point (message-based) — unchanged behavior -----
   async execute(message, args, client, invokedName) {
     const commandName = (invokedName || "pat").toLowerCase();
-
-    const meanCommands = new Set([
-      "kill",
-      "bully",
-      "poke",
-      "bonk",
-      "throw",
-      "insult",
-      "scare",
-      "slap",
-    ]);
-
-    const simpleResponses = {
-      pat: pats,
-      hug: hugs,
-      boop: boops,
-      kiss: kisses,
-      cuddle: cuddles,
-      cookie: cookies,
-      coffee: coffees,
-      fish: fishes,
-      flower: flowers,
-      bully: bullies,
-      poke: pokes,
-      bonk: bonks,
-      scare: scares,
-      insult: insults,
-      slap: slaps,
-      tickle: tickles,
-      comfort: comforts,
-      apologize: apologies,
-      care: cares,
-      // Secret
-      pspsps,
-      catnip: catnips,
-      system32,
-      sudo: sudos,
-      taxes,
-      konami: konamis,
-      nyako: nyakos,
-    };
-
-    const specialResponses = {
-      gift() {
-        const gift = gifts[Math.floor(Math.random() * gifts.length)];
-        return `🎁 **You gave Nyako:** ${gift.item}\n\n${gift.response}`;
-      },
-      feed() {
-        const food = foods[Math.floor(Math.random() * foods.length)];
-        return `🍽️ **You fed Nyako:** ${food.item}\n\n${food.response}`;
-      },
-      throw() {
-        const item = throwables[Math.floor(Math.random() * throwables.length)];
-        return `🪃 **You threw:** ${item.item}\n\n${item.response}`;
-      },
-      kill() {
-        return Math.random() < 0.03
-          ? rareKills[Math.floor(Math.random() * rareKills.length)]
-          : kills[Math.floor(Math.random() * kills.length)];
-      },
-    };
 
     // Cooldown check — quietly ignore instead of spamming a full embed.
     const remaining = checkCooldown(message.author.id, commandName, COOLDOWN_SECONDS);
@@ -614,34 +675,44 @@ module.exports = {
       return;
     }
 
-    let response;
-    if (specialResponses[commandName]) {
-      response = specialResponses[commandName]();
-    } else {
-      const pool = simpleResponses[commandName] ?? pats;
-      response = pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    if (meanCommands.has(commandName) && Math.random() < 0.02) {
-      response += `\n\n${chaosEvents[Math.floor(Math.random() * chaosEvents.length)]}`;
-    }
-
-    const meta = COMMAND_META[commandName] ?? { title: "Pat", emoji: "🐾", tone: "sweet" };
-    const color = TONE_COLORS[meta.tone] ?? TONE_COLORS.sweet;
-
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setTitle(`${meta.emoji} ${meta.title}`)
-      .setDescription(response)
-      .setFooter({
-        text: `${message.author.username} ❤`,
-        iconURL: message.author.displayAvatarURL?.() ?? undefined,
-      });
+    const embed = buildResponseEmbed(commandName, {
+      username: message.author.username,
+      avatarURL: message.author.displayAvatarURL?.(),
+    });
 
     try {
       await message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error(`[pat.js] Failed to send response for "${commandName}":`, err);
+    }
+  },
+
+  // ----- Slash-command entry point -----
+  // interaction.commandName is now always "nyako"; the specific action comes
+  // from the "action" string option, e.g. /nyako action:pat -> "pat".
+  async executeInteraction(interaction) {
+    const commandName = interaction.options.getString("action").toLowerCase();
+
+    // Cooldown check — an ephemeral reply is only visible to the user who
+    // triggered it and needs no manual cleanup, unlike the message version.
+    const remaining = checkCooldown(interaction.user.id, commandName, COOLDOWN_SECONDS);
+    if (remaining > 0) {
+      await interaction.reply({
+        content: `⏳ Slow down! You can use **/nyako action:${commandName}** again in ${remaining}s.`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const embed = buildResponseEmbed(commandName, {
+      username: interaction.user.username,
+      avatarURL: interaction.user.displayAvatarURL?.(),
+    });
+
+    try {
+      await interaction.reply({ embeds: [embed] });
+    } catch (err) {
+      console.error(`[pat.js] Failed to send interaction response for "${commandName}":`, err);
     }
   },
 };

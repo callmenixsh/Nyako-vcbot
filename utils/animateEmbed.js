@@ -37,4 +37,41 @@ async function animateEmbed({
     }
 }
 
-module.exports = { animateEmbed };
+// Interaction equivalent of animateEmbed. There's no message.channel.send
+// step for slash commands — the first "message" has to be interaction.reply
+// (or editReply if already deferred), and every subsequent stage becomes
+// interaction.editReply. Locking is keyed on the interaction id since that's
+// the stable identifier across the whole reply/edit chain.
+async function animateEmbedInteraction({
+    interaction,
+    stages = [],
+    interval = 1200,
+}) {
+    const key = `interaction:${interaction.id}`;
+
+    if (activeLocks.has(key)) return;
+
+    activeLocks.add(key);
+
+    try {
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ embeds: [stages[0]] });
+        } else {
+            await interaction.reply({ embeds: [stages[0]] });
+        }
+
+        for (let i = 1; i < stages.length; i++) {
+            await sleep(interval);
+
+            try {
+                await interaction.editReply({ embeds: [stages[i]] });
+            } catch {
+                break; // stop safely if the interaction token expired
+            }
+        }
+    } finally {
+        activeLocks.delete(key);
+    }
+}
+
+module.exports = { animateEmbed, animateEmbedInteraction };
