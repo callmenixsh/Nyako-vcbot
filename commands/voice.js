@@ -5,6 +5,8 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
+const { safeEdit } = require("../utils/safeEdit");
+
 let sleepTimers = [];
 let sleepMessages = [];
 function parseTime(input) {
@@ -38,7 +40,7 @@ async function scheduleSleep(message, vc) {
   await scheduleMassAction({
     message,
     members,
-    delayMs: 10000,
+    delayMs: 30 * 60 *1000,
     title: "Sleep -  Deafen",
     verb: "deafen",
     emoji: "🌙",
@@ -52,7 +54,7 @@ async function scheduleSleep(message, vc) {
   scheduleMassAction({
     message,
     members,
-    delayMs: 10000,
+    delayMs:1 * 60 * 60*  1000,
     title: "Sleep - Disconnect",
     verb: "disconnect",
     emoji: "👟",
