@@ -345,50 +345,269 @@ async function scheduleMassAction(ctx, { members, delayMs, title, verb, emoji, c
 
 // ─── SLEEP ────────────────────────────────────────────────────────────────────
 
+// ─── SLEEP (rewritten: single clean embed, per-stage cancel buttons) ─────────
+//
+// Replaces the old scheduleSleep() function. Drop this in place of the
+// existing one — everything else in the file (sleepTimers, sleepMessages,
+// handleSleepCancel, ACTIONS, etc.) stays exactly as-is and keeps working
+// alongside it.
+
+// ─── SLEEP (v2: prettier + subtly animated) ───────────────────────────────
+//
+// Replaces the scheduleSleep() from before. Same drop-in rule applies:
+// everything else in the file (sleepTimers, sleepMessages, handleSleepCancel,
+// ACTIONS, etc.) is untouched.
+//
+// What's new vs the last version:
+//   • A moon phase in the title quietly cycles (🌑→🌘) every tick, so the
+//     embed visibly "breathes" instead of sitting static.
+//   • A unicode progress bar tracks time to the next stage.
+//   • The embed color drifts (blurple → purple → near-black) as the night
+//     gets later, then settles green/grey on completion or cancellation.
+//   • Still edits in place — no message spam — just ticks every 20s instead
+//     of only updating on stage-complete/cancel.
+
+// ─── SLEEP (v3: goodnight greeting, not a command panel) ──────────────────
+//
+// Same drop-in as before — swap out scheduleSleep(). Functionally identical
+// to v2 (progress bar, moon-phase tick, per-stage cancel buttons, same
+// timers/sleepMessages arrays), just written like the bot is actually
+// saying goodnight instead of reporting a job status.
+
+// ─── SLEEP (v4: goodnight greeting + ±30m shift buttons) ──────────────────
+//
+// Same drop-in as before — swap out scheduleSleep(). Adds two buttons that
+// push every still-pending stage 30 minutes later or earlier, all at once,
+// so "deafen → disconnect → shutdown" stays one coherent bedtime instead of
+// drifting apart.
+
+// ─── SLEEP (v4: goodnight greeting + ±30m shift buttons) ──────────────────
+//
+// Same drop-in as before — swap out scheduleSleep(). Adds two buttons that
+// push every still-pending stage 30 minutes later or earlier, all at once,
+// so "deafen → disconnect → shutdown" stays one coherent bedtime instead of
+// drifting apart.
+
+const MOON_PHASES = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"];
+const ANIMATION_INTERVAL = 20_000;
+const SHIFT_MS = 30 * 60 * 1000;
+const MIN_REMAINING_MS = 60 * 1000; 
+
+function makeBar(fraction, length = 14) {
+  const filled = Math.max(0, Math.min(length, Math.round(fraction * length)));
+  return "▰".repeat(filled) + "▱".repeat(length - filled);
+}
+
 async function scheduleSleep(ctx, vc) {
   const members = [...vc.members.values()].filter((m) => !m.user.bot);
   if (!members.length) return;
 
-  sleepMessages.push(await ctx.channel.send("🌙 Good night <3\n \n - - - - - - - - ‎ "));
+  const start = Date.now();
 
-  await scheduleMassAction(ctx, {
-    members,
-    delayMs: 30 * 60 * 1000,
-    title: "Sleep - Deafen",
-    verb: "deafen",
-    emoji: "🌙",
-    completeText: (u) => `Deafened:\n${u}`,
-    action: (m) => m.voice.setDeaf(true),
-    cancelId: "cancel_sleep_deafen",
-    isSleep: true,
+  const stages = {
+    deafen: {
+      emoji: "➡",
+      pendingText: "gonna quiet things down for you",
+      doneText: "quieted things down",
+      cancelledText: "keeping the noise on, your call",
+      cancelLabel: "let me listen",
+      delay: 30 * 60 * 1000,
+      status: "pending",
+      cancelId: "cancel_sleep_deafen",
+      color: 0x5865f2,
+      action: async () => {
+        for (const m of members) {
+          try {
+            if (m.voice.channel) await m.voice.setDeaf(true);
+          } catch (err) {
+            console.error("vc sleep deafen error:", err);
+          }
+        }
+      },
+    },
+    disconnect: {
+      emoji: "➡",
+      pendingText: "then i'll see you out",
+      doneText: "saw you out",
+      cancelledText: "you can stick around",
+      cancelLabel: "let me stay",
+      delay: 60 * 60 * 1000,
+      status: "pending",
+      cancelId: "cancel_sleep_disconnect",
+      color: 0x9b59b6,
+      action: async () => {
+        for (const m of members) {
+          try {
+            if (m.voice.channel) await m.voice.setChannel(null);
+          } catch (err) {
+            console.error("vc sleep disconnect error:", err);
+          }
+        }
+      },
+    },
+    shutdown: {
+      emoji: "➡",
+      pendingText: "and after that, i'll go to sleep",
+      doneText: "slept for the night",
+      cancelledText: "guess i'll stay up then",
+      cancelLabel: "stay up nyako",
+      delay: 90 * 60 * 1000,
+      status: "pending",
+      cancelId: "cancel_sleep_shutdown",
+      color: 0x2f3136,
+      action: async () => {
+        await ctx.channel.send("🌙 alright, heading to bed. night!");
+        setTimeout(() => {
+          console.log("Bot shut down after sleep sequence.");
+          ctx.channel.client.destroy();
+          process.exit(0);
+        }, 1000);
+      },
+    },
+  };
+
+  let frame = 0;
+  const timers = {};
+
+  const activeStage = () =>
+    Object.values(stages)
+      .filter((s) => s.status === "pending")
+      .sort((a, b) => a.delay - b.delay)[0] || null;
+
+  const buildEmbed = () => {
+    const active = activeStage();
+    const moon = MOON_PHASES[frame % MOON_PHASES.length];
+
+    const lines = Object.values(stages).map((s) => {
+      if (s.status === "cancelled") return `${s.emoji} ~~${s.pendingText}~~ — ${s.cancelledText}`;
+      if (s.status === "done") return `${s.emoji} ${s.doneText} ✓`;
+      const ts = Math.floor((start + s.delay) / 1000);
+      return `${s.emoji} ${s.pendingText} — <t:${ts}:R>`;
+    });
+
+    const allResolved = Object.values(stages).every((s) => s.status !== "pending");
+    let description = `${moon} good night <3\n\n${lines.join("\n")}`;
+    let color = 0x99aaab;
+
+    if (!allResolved && active) {
+      color = active.color;
+    } else if (allResolved) {
+      const anyDone = Object.values(stages).some((s) => s.status === "done");
+      description += anyDone ? "\n\n*sleep well 🌙*" : "\n\n*alright, nevermind then~*";
+      color = anyDone ? 0x2f3136 : 0x57f287;
+    }
+
+    return new EmbedBuilder().setColor(color).setDescription(description);
+  };
+
+  const buildRow = () => {
+    const pending = Object.entries(stages).filter(([, s]) => s.status === "pending");
+    if (!pending.length) return [];
+
+    const cancelRow = new ActionRowBuilder().addComponents(
+      ...pending.map(([, s]) =>
+        new ButtonBuilder().setCustomId(s.cancelId).setLabel(s.cancelLabel).setEmoji("❌").setStyle(ButtonStyle.Secondary)
+      )
+    );
+
+    const shiftRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("sleep_shift_minus30").setLabel("30m sooner").setEmoji("⏪").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("sleep_shift_plus30").setLabel("30m later").setEmoji("⏩").setStyle(ButtonStyle.Primary)
+    );
+
+    return [cancelRow, shiftRow];
+  };
+
+  const msg = await ctx.channel.send({ embeds: [buildEmbed()], components: buildRow() });
+  sleepMessages.push(msg);
+
+  const refresh = async () => {
+    if (!msg.editable) return;
+    await safeEdit(msg, { embeds: [buildEmbed()], components: buildRow() });
+  };
+
+  let animationTimer = null;
+
+  const stopAnimationIfDone = () => {
+    if (Object.values(stages).every((s) => s.status !== "pending") && animationTimer) {
+      clearInterval(animationTimer);
+      animationTimer = null;
+    }
+  };
+
+  animationTimer = setInterval(() => {
+    frame++;
+    refresh();
+    stopAnimationIfDone();
+  }, ANIMATION_INTERVAL);
+  sleepTimers.push(animationTimer);
+
+  const scheduleStageTimer = (key) => {
+    if (timers[key]) clearTimeout(timers[key]);
+    const remaining = Math.max(0, stages[key].delay - (Date.now() - start));
+    const t = setTimeout(async () => {
+      if (stages[key].status !== "pending") return;
+      stages[key].status = "done";
+      try {
+        await stages[key].action();
+      } catch (err) {
+        console.error(`vc sleep ${key} error:`, err);
+      }
+      await refresh();
+      stopAnimationIfDone();
+    }, remaining);
+    timers[key] = t;
+    sleepTimers.push(t);
+  };
+
+  for (const key of Object.keys(stages)) scheduleStageTimer(key);
+
+  const shiftPendingStages = (deltaMs) => {
+    const elapsed = Date.now() - start;
+    for (const key of Object.keys(stages)) {
+      const s = stages[key];
+      if (s.status !== "pending") continue;
+      const minDelay = elapsed + MIN_REMAINING_MS;
+      s.delay = Math.max(s.delay + deltaMs, minDelay);
+      scheduleStageTimer(key);
+    }
+  };
+
+  // No fixed `time` here — the collector is stopped manually once every
+  // stage resolves, so shifting later never runs past a stale deadline.
+  const collector = msg.createMessageComponentCollector();
+
+  collector.on("collect", async (i) => {
+    if (i.user.id !== ctx.authorId) {
+      return i.reply({ content: "only the command author can change this~", ephemeral: true });
+    }
+
+    if (i.customId === "sleep_shift_minus30" || i.customId === "sleep_shift_plus30") {
+      shiftPendingStages(i.customId === "sleep_shift_minus30" ? -SHIFT_MS : SHIFT_MS);
+      return i.update({ embeds: [buildEmbed()], components: buildRow() });
+    }
+
+    const key = Object.keys(stages).find((k) => stages[k].cancelId === i.customId);
+    if (!key || stages[key].status !== "pending") return i.deferUpdate();
+
+    stages[key].status = "cancelled";
+    clearTimeout(timers[key]);
+
+    await i.update({ embeds: [buildEmbed()], components: buildRow() });
+    stopAnimationIfDone();
+
+    if (Object.values(stages).every((s) => s.status !== "pending")) {
+      collector.stop();
+    }
   });
 
-  scheduleMassAction(ctx, {
-    members,
-    delayMs: 1 * 60 * 60 * 1000,
-    title: "Sleep - Disconnect",
-    verb: "disconnect",
-    emoji: "👟",
-    completeText: (u) => `Disconnected:\n${u}`,
-    action: (m) => m.voice.setChannel(null),
-    cancelId: "cancel_sleep_disconnect",
-    isSleep: true,
+  collector.on("end", () => {
+    if (animationTimer) {
+      clearInterval(animationTimer);
+      animationTimer = null;
+    }
   });
-
-  sleepMessages.push(await ctx.channel.send("- - - - - - - - ‎ \n \n I will sleep <3 in 1 hr"));
-
-  sleepTimers.push(
-    setTimeout(async () => {
-      await ctx.channel.send("🛑 Sleep mode complete.\nBot shutting down...");
-      setTimeout(() => {
-        console.log("Bot shut down after sleep sequence.");
-        ctx.channel.client.destroy();
-        process.exit(0);
-      }, 1000);
-    }, 1.5 * 60 * 60 * 1000)
-  );
 }
-
 // ─── HANDLERS ─────────────────────────────────────────────────────────────────
 
 async function runSingleAction(ctx, actionKey, member, timeArg) {
